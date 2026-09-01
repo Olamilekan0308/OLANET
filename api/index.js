@@ -1,140 +1,63 @@
 import express from "express";
 
 const app = express();
-app.use(express.json());
-
 const accessCookie = "skillhub_access_token";
 const refreshCookie = "skillhub_refresh_token";
 
 function supabaseConfig() {
   const url = String(process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
   const key = String(process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  if (!url) throw new Error("Missing SUPABASE_URL environment variable");
-  if (!key) throw new Error("Missing Supabase API key environment variable");
+  if (!url || !key) throw new Error("Supabase environment is not configured");
   return { url, key };
 }
-
 async function supabase(path, options = {}) {
   const { url, key } = supabaseConfig();
-  return fetch(`${url}${path}`, {
-    ...options,
-    headers: { apikey: key, "Content-Type": "application/json", ...(options.headers || {}) },
-  });
+  return fetch(`${url}${path}`, { ...options, headers: { apikey: key, "Content-Type": "application/json", ...(options.headers || {}) } });
 }
-
-async function json(response) {
-  const text = await response.text();
-  if (!text) return null;
-  try { return JSON.parse(text); } catch { return null; }
-}
-
-function cookies(req) {
-  const out = {};
-  for (const part of String(req.headers.cookie || "").split(";")) {
-    const i = part.indexOf("=");
-    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
-  }
-  return out;
-}
-
-function setSession(res, data) {
-  res.setHeader("Set-Cookie", [
-    `${accessCookie}=${encodeURIComponent(data.access_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Secure`,
-    `${refreshCookie}=${encodeURIComponent(data.refresh_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000; Secure`,
-  ]);
-}
-
-function clearSession(res) {
-  res.setHeader("Set-Cookie", [
-    `${accessCookie}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
-    `${refreshCookie}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
-  ]);
-}
-
+async function json(response) { const text = await response.text(); if (!text) return null; try { return JSON.parse(text); } catch { return null; } }
+function cookies(req) { const out = {}; for (const part of String(req.headers.cookie || "").split(";")) { const i = part.indexOf("="); if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } return out; }
+function setSession(res, data) { res.setHeader("Set-Cookie", [`${accessCookie}=${encodeURIComponent(data.access_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Secure`, `${refreshCookie}=${encodeURIComponent(data.refresh_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000; Secure`]); }
+function clearSession(res) { res.setHeader("Set-Cookie", [`${accessCookie}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`, `${refreshCookie}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`]); }
 async function currentUser(req, res) {
-  const c = cookies(req);
-  if (!c[accessCookie] && !c[refreshCookie]) return null;
-  let token = c[accessCookie];
-  let user = null;
-  if (token) {
-    const r = await supabase("/auth/v1/user", { headers: { Authorization: `Bearer ${token}` } });
-    if (r.ok) user = await json(r);
-  }
-  if (!user && c[refreshCookie]) {
-    const r = await supabase("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: JSON.stringify({ refresh_token: c[refreshCookie] }) });
-    const d = await json(r);
-    if (r.ok && d?.access_token && d?.user) { token = d.access_token; user = d.user; setSession(res, d); }
-  }
+  const c = cookies(req); if (!c[accessCookie] && !c[refreshCookie]) return null;
+  let token = c[accessCookie], user = null;
+  if (token) { const r = await supabase("/auth/v1/user", { headers: { Authorization: `Bearer ${token}` } }); if (r.ok) user = await json(r); }
+  if (!user && c[refreshCookie]) { const r = await supabase("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: JSON.stringify({ refresh_token: c[refreshCookie] }) }); const d = await json(r); if (r.ok && d?.access_token && d?.user) { token = d.access_token; user = d.user; setSession(res, d); } }
   return user ? { user, token } : null;
 }
+async function requireAuth(req, res) { const s = await currentUser(req, res); if (!s) { res.status(401).json({ error: "Not authenticated" }); return null; } return s; }
+async function getProfile(userId, token) { const r = await supabase(`/rest/v1/profiles?select=id,full_name,username,avatar_url,bio,department,course&id=eq.${encodeURIComponent(userId)}&limit=1`, { headers: { Authorization: `Bearer ${token}` } }); if (!r.ok) return null; const rows = await json(r); return Array.isArray(rows) ? rows[0] || null : null; }
+async function ensureProfile(user, token, fullName) { const name = String(fullName || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "OLANET member").trim(); return supabase("/rest/v1/profiles?on_conflict=id", { method: "POST", headers: { Authorization: `Bearer ${token}`, Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ id: user.id, full_name: name }) }); }
+async function updateProfile(user, token, updates) { const allowed = ["username", "full_name", "bio", "avatar_url", "department", "course"]; const body = { id: user.id }; for (const k of allowed) if (updates && Object.prototype.hasOwnProperty.call(updates, k)) body[k] = updates[k]; const r = await supabase("/rest/v1/profiles?on_conflict=id", { method: "POST", headers: { Authorization: `Bearer ${token}`, Prefer: "resolution=merge-duplicates,return=representation" }, body: JSON.stringify(body) }); const d = await json(r); if (!r.ok) throw new Error(d?.message || d?.hint || d?.details || "Unable to update your profile"); return Array.isArray(d) ? d[0] || null : d;
+}
+const MEDIA_TYPES = new Set(["image", "video", "voice", "video_note"]);
+function parseMedia(input) { const mediaType = typeof input?.media_type === "string" ? input.media_type.trim().toLowerCase() : null; const mediaUrl = typeof input?.media_url === "string" ? input.media_url.trim() : null; const isViewOnce = Boolean(input?.is_view_once); if (isViewOnce && (!mediaType || !MEDIA_TYPES.has(mediaType) || !mediaUrl)) return { error: "View Once is available only for pictures, videos, voice notes, and video notes." }; if (mediaType && !MEDIA_TYPES.has(mediaType)) return { error: "Unsupported media type." }; if (mediaType && !mediaUrl) return { error: "A media URL is required when media type is provided." }; return { isViewOnce, mediaType, mediaUrl }; }
+async function filterConsumed(messages, token, userId) { if (!Array.isArray(messages) || !messages.length) return messages || []; const ids = messages.map(m => m?.id).filter(Number.isInteger); if (!ids.length) return messages; const r = await supabase(`/rest/v1/chat_message_views?user_id=eq.${encodeURIComponent(userId)}&message_id=in.(${ids.join(",")})&select=message_id`, { headers: { Authorization: `Bearer ${token}` } }); const rows = await json(r) || []; const consumed = new Set(rows.map(x => x.message_id)); return messages.filter(m => !(m.is_view_once && m.sender_id !== userId && consumed.has(m.id))); }
 
+app.use(express.json({ limit: "2mb" }));
 app.get("/api/healthz", (_req, res) => res.json({ status: "ok" }));
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
-app.post("/api/auth/login", async (req, res) => {
-  try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
-    const password = String(req.body?.password || "");
-    if (!email || !password) return res.status(400).json({ error: "Email and password are required" });
-    const r = await supabase("/auth/v1/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) });
-    const d = await json(r);
-    if (!r.ok || !d?.access_token) return res.status(r.status || 401).json({ error: d?.error_description || d?.msg || "Invalid email or password" });
-    setSession(res, d);
-    return res.json({ user: { ...d.user, profile: null } });
-  } catch (e) { return res.status(500).json({ error: e?.message || "Unable to connect to authentication service" }); }
-});
+app.post("/api/auth/login", async (req, res) => { try { const email = String(req.body?.email || "").trim().toLowerCase(), password = String(req.body?.password || ""); if (!email || !password) return res.status(400).json({ error: "Email and password are required" }); const r = await supabase("/auth/v1/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) }); const d = await json(r); if (!r.ok || !d?.access_token) return res.status(r.status || 401).json({ error: d?.error_description || d?.msg || "Invalid email or password" }); setSession(res, d); const pr = await ensureProfile(d.user, d.access_token); return res.json({ user: { ...d.user, profile: await getProfile(d.user.id, d.access_token) }, profileError: pr.ok ? null : { status: pr.status } }); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to connect to authentication service" }); } });
+app.post("/api/auth/signup", async (req, res) => { try { const email = String(req.body?.email || "").trim().toLowerCase(), password = String(req.body?.password || ""), fullName = String(req.body?.fullName || "").trim(); if (fullName.length < 2 || !email || password.length < 6) return res.status(400).json({ error: "Name, valid email and a password of at least 6 characters are required" }); const r = await supabase("/auth/v1/signup", { method: "POST", body: JSON.stringify({ email, password, data: { full_name: fullName } }) }); const d = await json(r); if (!r.ok || !d?.user) return res.status(r.status || 400).json({ error: d?.msg || d?.error_description || "Unable to create your account" }); if (!d.access_token) return res.json({ user: null, needsEmailConfirmation: true }); setSession(res, d); const pr = await ensureProfile(d.user, d.access_token, fullName); return res.json({ user: { ...d.user, profile: await getProfile(d.user.id, d.access_token) }, needsEmailConfirmation: false, profileError: pr.ok ? null : { status: pr.status } }); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to create your account" }); } });
+app.get("/api/auth/session", async (req, res) => { try { const s = await currentUser(req, res); if (!s) return res.status(401).json({ error: "Not authenticated" }); await ensureProfile(s.user, s.token); return res.json({ user: { ...s.user, profile: await getProfile(s.user.id, s.token) } }); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to check your session" }); } });
+app.post("/api/auth/logout", async (req, res) => { try { const c = cookies(req); if (c[accessCookie]) await supabase("/auth/v1/logout", { method: "POST", headers: { Authorization: `Bearer ${c[accessCookie]}` } }).catch(() => null); } finally { clearSession(res); return res.json({ ok: true }); } });
+app.post("/api/auth/resend-email", async (req, res) => { try { const email = String(req.body?.email || "").trim().toLowerCase(); if (!email) return res.status(400).json({ error: "Email is required" }); const r = await supabase("/auth/v1/resend", { method: "POST", body: JSON.stringify({ type: "signup", email }) }); const d = await json(r); if (!r.ok) return res.status(r.status || 400).json({ error: d?.msg || d?.error_description || "Unable to resend the verification code" }); return res.json({ ok: true }); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to resend the verification code" }); } });
+app.post("/api/auth/verify-email", async (req, res) => { try { const email = String(req.body?.email || "").trim().toLowerCase(), token = String(req.body?.token || ""); if (!email || !token) return res.status(400).json({ error: "Email and verification code are required" }); const r = await supabase("/auth/v1/verify", { method: "POST", body: JSON.stringify({ type: "email", email, token }) }); const d = await json(r); if (!r.ok || !d?.access_token) return res.status(r.status || 400).json({ error: d?.msg || d?.error_description || "That verification code is invalid or expired" }); setSession(res, d); await ensureProfile(d.user, d.access_token); return res.json({ user: { ...d.user, profile: await getProfile(d.user.id, d.access_token) }, verified: true }); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to verify your email" }); } });
 
-app.post("/api/auth/signup", async (req, res) => {
-  try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
-    const password = String(req.body?.password || "");
-    const fullName = String(req.body?.fullName || "").trim();
-    if (fullName.length < 2 || !email || password.length < 6) return res.status(400).json({ error: "Name, valid email and a password of at least 6 characters are required" });
-    const r = await supabase("/auth/v1/signup", { method: "POST", body: JSON.stringify({ email, password, data: { full_name: fullName } }) });
-    const d = await json(r);
-    if (!r.ok || !d?.user) return res.status(r.status || 400).json({ error: d?.msg || d?.error_description || "Unable to create your account" });
-    if (d.access_token) setSession(res, d);
-    return res.json({ user: d.access_token ? { ...d.user, profile: null } : null, needsEmailConfirmation: !d.access_token });
-  } catch (e) { return res.status(500).json({ error: e?.message || "Unable to create your account" }); }
-});
+app.put("/api/profile/me", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; try { return res.json({ profile: await updateProfile(s.user, s.token, req.body || {}) }); } catch (e) { return res.status(400).json({ error: e?.message || "Unable to update your profile" }); } });
+app.post("/api/profile/avatar", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const type = String(req.headers["content-type"] || "image/jpeg"); const raw = Buffer.isBuffer(req.body) ? req.body : null; if (!raw) return res.status(400).json({ error: "Image upload is required" }); if (raw.length > 8 * 1024 * 1024) return res.status(413).json({ error: "Profile pictures must be 8 MB or smaller" }); try { const path = `/storage/v1/object/profile-avatars/${s.user.id}`; const upload = await supabase(path, { method: "POST", headers: { Authorization: `Bearer ${s.token}`, "Content-Type": type, "x-upsert": "true" }, body: raw }); if (!upload.ok) { const d = await json(upload); return res.status(upload.status).json({ error: d?.message || "Unable to upload your profile picture" }); } const { url } = supabaseConfig(); const avatarUrl = `${url}/storage/v1/object/public/profile-avatars/${s.user.id}`; return res.json({ profile: await updateProfile(s.user, s.token, { avatar_url: avatarUrl }) }); } catch (e) { return res.status(500).json({ error: e?.message || "Upload failed" }); } });
+app.patch("/api/settings/account", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const body = {}; if (typeof req.body?.email === "string" && req.body.email.trim()) body.email = req.body.email.trim(); if (typeof req.body?.password === "string" && req.body.password.length >= 8) body.password = req.body.password; if (!Object.keys(body).length) return res.status(400).json({ error: "Provide a new email or a password of at least 8 characters." }); try { const r = await supabase("/auth/v1/user", { method: "PUT", headers: { Authorization: `Bearer ${s.token}` }, body: JSON.stringify(body) }); const d = await json(r); if (!r.ok) return res.status(r.status).json({ error: d?.msg || d?.message || d?.error_description || "Unable to update account settings." }); return res.json({ ok: true, user: d }); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to update account settings." }); } });
 
-app.get("/api/auth/session", async (req, res) => {
-  try {
-    const s = await currentUser(req, res);
-    if (!s) return res.status(401).json({ error: "Not authenticated" });
-    return res.json({ user: { ...s.user, profile: null } });
-  } catch (e) { return res.status(500).json({ error: e?.message || "Unable to check your session" }); }
-});
-
-app.post("/api/auth/logout", async (req, res) => {
-  try {
-    const c = cookies(req);
-    if (c[accessCookie]) await supabase("/auth/v1/logout", { method: "POST", headers: { Authorization: `Bearer ${c[accessCookie]}` } }).catch(() => null);
-  } finally { clearSession(res); return res.json({ ok: true }); }
-});
-
-app.post("/api/auth/resend-email", async (req, res) => {
-  try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
-    if (!email) return res.status(400).json({ error: "Email is required" });
-    const r = await supabase("/auth/v1/resend", { method: "POST", body: JSON.stringify({ type: "signup", email }) });
-    const d = await json(r);
-    if (!r.ok) return res.status(r.status || 400).json({ error: d?.msg || d?.error_description || "Unable to resend the verification code" });
-    return res.json({ ok: true });
-  } catch (e) { return res.status(500).json({ error: e?.message || "Unable to resend the verification code" }); }
-});
-
-app.post("/api/auth/verify-email", async (req, res) => {
-  try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
-    const token = String(req.body?.token || "");
-    if (!email || !token) return res.status(400).json({ error: "Email and verification code are required" });
-    const r = await supabase("/auth/v1/verify", { method: "POST", body: JSON.stringify({ type: "email", email, token }) });
-    const d = await json(r);
-    if (!r.ok || !d?.access_token) return res.status(r.status || 400).json({ error: d?.msg || d?.error_description || "That verification code is invalid or expired" });
-    setSession(res, d);
-    return res.json({ user: { ...d.user, profile: null }, verified: true });
-  } catch (e) { return res.status(500).json({ error: e?.message || "Unable to verify your email" }); }
-});
+app.get("/api/people", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const q = typeof req.query.q === "string" ? req.query.q.trim() : ""; const filter = q ? `&or=(full_name.ilike.*${encodeURIComponent(q)}*,username.ilike.*${encodeURIComponent(q)}*)` : ""; try { const r = await supabase(`/rest/v1/profiles?select=id,full_name,username,avatar_url,bio,department&order=full_name.asc&limit=30${filter}`, { headers: { Authorization: `Bearer ${s.token}` } }); const d = await json(r) || []; return res.status(r.status).json(Array.isArray(d) ? d.filter(p => p.id !== s.user.id) : d); } catch (e) { return res.status(500).json({ error: e?.message || "Unable to load members" }); } });
+app.get("/api/groups", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const q = typeof req.query.q === "string" ? req.query.q.trim() : ""; const path = `/rest/v1/groups?select=*&${q ? `name=ilike.*${encodeURIComponent(q)}*&` : ""}order=created_at.desc&limit=50`; const r = await supabase(path, { headers: { Authorization: `Bearer ${s.token}` } }); return res.status(r.status).json(await json(r) || []); });
+app.post("/api/groups", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const name = String(req.body?.name || "").trim(); if (!name) return res.status(400).json({ error: "Group name is required" }); const r = await supabase("/rest/v1/groups?select=*", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=representation" }, body: JSON.stringify({ name, description: req.body?.description || null, avatar_url: req.body?.avatar_url || null, created_by: s.user.id }) }); const d = await json(r); if (!r.ok) return res.status(r.status).json(d || { error: "Could not create group" }); const group = Array.isArray(d) ? d[0] : d; if (group?.id != null) await supabase("/rest/v1/group_members", { method: "POST", headers: { Authorization: `Bearer ${s.token}` }, body: JSON.stringify({ group_id: group.id, user_id: s.user.id, role: "owner" }) }); return res.status(201).json(group); });
+app.post("/api/groups/:id/join", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const r = await supabase("/rest/v1/group_members", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=representation" }, body: JSON.stringify({ group_id: Number(req.params.id), user_id: s.user.id, role: "member" }) }); return res.status(r.ok ? 201 : r.status).json(await json(r) || {}); });
+app.get("/api/groups/:id/messages", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const r = await supabase(`/rest/v1/chat_messages?group_id=eq.${encodeURIComponent(req.params.id)}&select=*&order=created_at.desc&limit=100`, { headers: { Authorization: `Bearer ${s.token}` } }); const d = await json(r); const messages = Array.isArray(d) ? d.reverse() : d || []; return res.status(r.status).json(await filterConsumed(messages, s.token, s.user.id)); });
+app.post("/api/groups/:id/messages", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const text = typeof req.body?.body === "string" ? req.body.body.trim() : ""; const media = parseMedia(req.body || {}); if (media.error) return res.status(400).json({ error: media.error }); if (!text && !media.mediaUrl) return res.status(400).json({ error: "Message or media is required" }); const r = await supabase("/rest/v1/chat_messages?select=*", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=representation" }, body: JSON.stringify({ group_id: Number(req.params.id), sender_id: s.user.id, body: text, reply_to_id: req.body?.reply_to_id || null, is_view_once: media.isViewOnce, media_type: media.mediaType, media_url: media.mediaUrl }) }); return res.status(r.ok ? 201 : r.status).json(await json(r) || {}); });
+app.post("/api/conversations", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const ids = Array.isArray(req.body?.user_ids) ? req.body.user_ids.filter(x => typeof x === "string" && x !== s.user.id) : []; if (!ids.length) return res.status(400).json({ error: "At least one other user is required" }); const c = await supabase("/rest/v1/direct_conversations?select=*", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=representation" }, body: "{}" }); const cd = await json(c); const conversation = Array.isArray(cd) ? cd[0] : cd; if (!c.ok || !conversation?.id) return res.status(c.status).json(cd || { error: "Could not create conversation" }); const mr = await supabase("/rest/v1/direct_conversation_members", { method: "POST", headers: { Authorization: `Bearer ${s.token}` }, body: JSON.stringify([s.user.id, ...ids].map(user_id => ({ conversation_id: conversation.id, user_id }))) }); if (!mr.ok) return res.status(mr.status).json(await json(mr) || { error: "Could not add conversation members" }); return res.status(201).json(conversation); });
+app.get("/api/conversations/:id/messages", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const r = await supabase(`/rest/v1/chat_messages?conversation_id=eq.${encodeURIComponent(req.params.id)}&select=*&order=created_at.desc&limit=100`, { headers: { Authorization: `Bearer ${s.token}` } }); const d = await json(r); const messages = Array.isArray(d) ? d.reverse() : d || []; return res.status(r.status).json(await filterConsumed(messages, s.token, s.user.id)); });
+app.post("/api/conversations/:id/messages", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const text = typeof req.body?.body === "string" ? req.body.body.trim() : ""; const media = parseMedia(req.body || {}); if (media.error) return res.status(400).json({ error: media.error }); if (!text && !media.mediaUrl) return res.status(400).json({ error: "Message or media is required" }); const r = await supabase("/rest/v1/chat_messages?select=*", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=representation" }, body: JSON.stringify({ conversation_id: Number(req.params.id), sender_id: s.user.id, body: text, reply_to_id: req.body?.reply_to_id || null, is_view_once: media.isViewOnce, media_type: media.mediaType, media_url: media.mediaUrl }) }); return res.status(r.ok ? 201 : r.status).json(await json(r) || {}); });
+app.post("/api/messages/:id/view-once", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const id = Number(req.params.id); if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid message id" }); const r = await supabase(`/rest/v1/chat_messages?id=eq.${id}&select=id,sender_id,is_view_once&limit=1`, { headers: { Authorization: `Bearer ${s.token}` } }); const rows = await json(r) || []; const m = rows[0]; if (!m) return res.status(404).json({ error: "Message not found" }); if (!m.is_view_once) return res.status(400).json({ error: "This message is not view-once." }); if (m.sender_id === s.user.id) return res.status(400).json({ error: "The sender cannot consume their own view-once message." }); const prior = await supabase(`/rest/v1/chat_message_views?message_id=eq.${id}&user_id=eq.${s.user.id}&select=message_id&limit=1`, { headers: { Authorization: `Bearer ${s.token}` } }); if ((await json(prior) || []).length) return res.status(409).json({ error: "This view-once message has already been opened." }); const write = await supabase("/rest/v1/chat_message_views", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=minimal" }, body: JSON.stringify({ message_id: id, user_id: s.user.id }) }); if (!write.ok) return res.status(403).json({ error: "You cannot open this message." }); return res.json({ ok: true, consumed: true }); });
 
 export default function handler(req, res) { return app(req, res); }
