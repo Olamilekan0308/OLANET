@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bot, Calculator, X, Delete } from 'lucide-react';
 import { CircleAiPanel } from '@/components/circle-ai-panel';
+import '@/facebook-theme.css';
 
 const circleMap: Record<string, { id: number; name: string }> = {
   electrical: { id: 1, name: 'Electrical Engineering' }, civil: { id: 2, name: 'Civil Engineering' }, mechanical: { id: 3, name: 'Mechanical Engineering' }, 'computer-science': { id: 4, name: 'Computer Science' }, 'phone-repair': { id: 5, name: 'Phone Repair' }, fashion: { id: 6, name: 'Fashion' }, carpentry: { id: 7, name: 'Carpentry' }, agriculture: { id: 8, name: 'Agriculture' }, catering: { id: 9, name: 'Catering' },
