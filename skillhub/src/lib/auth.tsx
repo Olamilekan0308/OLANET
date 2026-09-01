@@ -1,10 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SocialHub } from '@/components/social-hub';
 
-export type AuthUser = {
-  id: string; email?: string | null; user_metadata?: Record<string, unknown> | null;
-  profile?: { id?: string; full_name?: string | null; username?: string | null; avatar_url?: string | null; bio?: string | null; department?: string | null; course?: string | null; } | null;
-};
+export type AuthUser = { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null; profile?: { id?: string; full_name?: string | null; username?: string | null; avatar_url?: string | null; bio?: string | null; department?: string | null; course?: string | null; } | null; };
 export type ProfileUpdateInput = { username?: string | null; full_name?: string | null; bio?: string | null; avatar_url?: string | null; department?: string | null; course?: string | null; };
 type ProfileResponse = { profile?: AuthUser['profile']; error?: string };
 type AuthResponse = { user?: AuthUser; error?: string; needsEmailConfirmation?: boolean; verified?: boolean; profileCreated?: boolean; profileError?: { status: number; code?: string; message: string; details?: string; hint?: string } | null };
