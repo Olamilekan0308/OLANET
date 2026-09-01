@@ -1,81 +1,15 @@
 (() => {
   const rootId = 'olanet-ai-widget-root';
   if (document.getElementById(rootId)) return;
-
-  const styles = `
-    #${rootId}{font-family:Inter,system-ui,sans-serif;position:fixed;right:18px;bottom:18px;z-index:99999}
-    #${rootId} *{box-sizing:border-box}
-    .oa-launch{border:0;border-radius:999px;background:#1769d2;color:#fff;padding:12px 16px;font-weight:800;box-shadow:0 10px 28px rgba(23,105,210,.28);cursor:pointer;display:flex;gap:8px;align-items:center}
-    .oa-launch:hover{background:#0f57b7}
-    .oa-panel{width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 100px));background:#fff;border:1px solid #dbe5f1;border-radius:20px;box-shadow:0 20px 60px rgba(12,42,78,.22);overflow:hidden;display:flex;flex-direction:column}
-    .oa-head{background:#1769d2;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
-    .oa-head strong{font-size:15px}.oa-head small{display:block;opacity:.82;margin-top:2px}
-    .oa-close{border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer}
-    .oa-messages{flex:1;overflow:auto;padding:14px;background:#f5f8fc}
-    .oa-msg{max-width:88%;padding:10px 12px;border-radius:15px;margin:8px 0;font-size:13px;line-height:1.55;white-space:pre-wrap}
-    .oa-msg.bot{background:#fff;color:#18324f;border:1px solid #e1e9f2}.oa-msg.user{background:#1769d2;color:#fff;margin-left:auto}
-    .oa-form{display:flex;gap:8px;padding:10px;border-top:1px solid #e1e9f2;background:#fff}
-    .oa-input{flex:1;resize:none;border:1px solid #d7e1ec;border-radius:12px;padding:10px;outline:none;font:inherit;font-size:13px}.oa-input:focus{border-color:#1769d2}
-    .oa-send{border:0;border-radius:12px;background:#1769d2;color:#fff;padding:0 14px;font-weight:800;cursor:pointer}.oa-send:disabled{opacity:.5;cursor:not-allowed}
-    .oa-circle{position:fixed;right:18px;top:78px;z-index:99998;border:1px solid #bcd5f5;border-radius:999px;background:#fff;color:#1769d2;padding:10px 14px;font-weight:800;box-shadow:0 8px 24px rgba(20,70,120,.14);cursor:pointer}
-    @media(max-width:640px){.oa-circle{top:70px;right:12px}.oa-launch{padding:11px 13px}}
-  `;
-  const style = document.createElement('style'); style.textContent = styles; document.head.appendChild(style);
-  const root = document.createElement('div'); root.id = rootId; document.body.appendChild(root);
-
-  let open = false;
-  let circleOpen = false;
-  let circleId = null;
-  let circleName = '';
-  const slugMap = { electrical:'1', civil:'2', mechanical:'3', 'computer-science':'4', 'phone-repair':'5', fashion:'6', carpentry:'7', agriculture:'8', catering:'9' };
-
-  function currentCircle() {
-    const match = location.pathname.match(/^\/circles\/([^/]+)/);
-    if (!match) return null;
-    const slug = decodeURIComponent(match[1]);
-    const id = slugMap[slug];
-    if (!id) return null;
-    return { id, name: slug.split('-').map(x => x.charAt(0).toUpperCase() + x.slice(1)).join(' ') };
-  }
-
-  function escapeHtml(value) { return value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
-  function panel(title, subtitle, endpoint) {
-    return `<div class="oa-panel"><div class="oa-head"><div><strong>OLANET AI</strong><small>${escapeHtml(subtitle)}</small></div><button class="oa-close" data-close>×</button></div><div class="oa-messages" data-messages><div class="oa-msg bot">Hi. I'm OLANET AI. How can I help?</div></div><form class="oa-form" data-form><textarea class="oa-input" data-input rows="2" placeholder="Ask OLANET AI..."></textarea><button class="oa-send" data-send>Send</button></form></div>`;
-  }
-
-  function render() {
-    const circle = currentCircle();
-    circleId = circle?.id || null; circleName = circle?.name || '';
-    root.innerHTML = `${circle ? `<button class="oa-circle" data-circle-launch>🤖 OLANET AI</button>` : ''}${open ? panel('OLANET AI', 'OLANET account support', '/api/support/ai') : '<button class="oa-launch" data-support-launch>🤖 OLANET AI Support</button>'}`;
-    const launch = root.querySelector('[data-support-launch]'); if (launch) launch.onclick = () => { open = true; render(); };
-    const circleLaunch = root.querySelector('[data-circle-launch]'); if (circleLaunch) circleLaunch.onclick = () => { circleOpen = true; open = false; renderCircle(); };
-    const close = root.querySelector('[data-close]'); if (close) close.onclick = () => { open = false; render(); };
-    const form = root.querySelector('[data-form]'); if (form) form.addEventListener('submit', sendSupport);
-  }
-
-  function renderCircle() {
-    root.innerHTML = `<button class="oa-circle" data-circle-close>🤖 OLANET AI</button>${circleOpen ? panel('OLANET AI', circleName, '/api/ai/circle') : ''}`;
-    const close = root.querySelector('[data-circle-close]'); close.onclick = () => { circleOpen = false; render(); };
-    const form = root.querySelector('[data-form]'); if (form) form.addEventListener('submit', sendCircle);
-  }
-
-  async function send(endpoint, message, extra, form) {
-    const input = form.querySelector('[data-input]'); const sendButton = form.querySelector('[data-send]'); const messages = form.parentElement.querySelector('[data-messages]');
-    const text = input.value.trim(); if (!text) return;
-    messages.insertAdjacentHTML('beforeend', `<div class="oa-msg user">${escapeHtml(text)}</div>`); input.value = ''; sendButton.disabled = true;
-    messages.insertAdjacentHTML('beforeend', `<div class="oa-msg bot" data-loading>Thinking…</div>`); messages.scrollTop = messages.scrollHeight;
-    try {
-      const response = await fetch(endpoint, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message:text, ...extra }) });
-      const data = await response.json().catch(() => ({}));
-      const loading = messages.querySelector('[data-loading]'); if (loading) loading.remove();
-      messages.insertAdjacentHTML('beforeend', `<div class="oa-msg bot">${escapeHtml(data.response || data.error || 'I could not answer right now.')}</div>`);
-    } catch { const loading = messages.querySelector('[data-loading]'); if (loading) loading.textContent = 'Connection problem. Please try again.'; }
-    sendButton.disabled = false; messages.scrollTop = messages.scrollHeight;
-  }
-  function sendSupport(event) { event.preventDefault(); send('/api/support/ai', event.currentTarget.querySelector('[data-input]').value, {}, event.currentTarget); }
-  function sendCircle(event) { event.preventDefault(); send('/api/ai/circle', event.currentTarget.querySelector('[data-input]').value, { circleId }, event.currentTarget); }
-
-  let lastPath = location.pathname;
-  setInterval(() => { if (location.pathname !== lastPath) { lastPath = location.pathname; open = false; circleOpen = false; render(); } }, 400);
-  render();
+  const styles = `#${rootId}{font-family:Inter,system-ui,sans-serif;position:fixed;right:18px;bottom:18px;z-index:99999}#${rootId} *{box-sizing:border-box}.oa-launch{border:0;border-radius:999px;background:#1769d2;color:#fff;padding:12px 16px;font-weight:800;box-shadow:0 10px 28px rgba(23,105,210,.28);cursor:pointer;display:flex;gap:8px;align-items:center}.oa-launch:hover{background:#0f57b7}.oa-panel{width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 100px));background:#fff;border:1px solid #dbe5f1;border-radius:20px;box-shadow:0 20px 60px rgba(12,42,78,.22);overflow:hidden;display:flex;flex-direction:column}.oa-head{background:#1769d2;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}.oa-head strong{font-size:15px}.oa-head small{display:block;opacity:.82;margin-top:2px}.oa-close{border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer}.oa-messages{flex:1;overflow:auto;padding:14px;background:#f5f8fc}.oa-msg{max-width:88%;padding:10px 12px;border-radius:15px;margin:8px 0;font-size:13px;line-height:1.55;white-space:pre-wrap}.oa-msg.bot{background:#fff;color:#18324f;border:1px solid #e1e9f2}.oa-msg.user{background:#1769d2;color:#fff;margin-left:auto}.oa-form{display:flex;gap:8px;padding:10px;border-top:1px solid #e1e9f2;background:#fff}.oa-input{flex:1;resize:none;border:1px solid #d7e1ec;border-radius:12px;padding:10px;outline:none;font:inherit;font-size:13px}.oa-input:focus{border-color:#1769d2}.oa-send{border:0;border-radius:12px;background:#1769d2;color:#fff;padding:0 14px;font-weight:800;cursor:pointer}.oa-send:disabled{opacity:.5;cursor:not-allowed}.oa-circle{position:fixed;right:18px;top:78px;z-index:99998;border:1px solid #bcd5f5;border-radius:999px;background:#fff;color:#1769d2;padding:10px 14px;font-weight:800;box-shadow:0 8px 24px rgba(20,70,120,.14);cursor:pointer}@media(max-width:640px){.oa-circle{top:70px;right:12px}.oa-launch{padding:11px 13px}}`;
+  const style=document.createElement('style');style.textContent=styles;document.head.appendChild(style);const root=document.createElement('div');root.id=rootId;document.body.appendChild(root);
+  let open=false,circleOpen=false,circleId=null,circleName='';const slugMap={electrical:'1',civil:'2',mechanical:'3','computer-science':'4','phone-repair':'5',fashion:'6',carpentry:'7',agriculture:'8',catering:'9'};
+  function currentCircle(){const match=location.pathname.match(/^\/circles\/([^/]+)/);if(!match)return null;const slug=decodeURIComponent(match[1]);const id=slugMap[slug];if(!id)return null;return{id,name:slug.split('-').map(x=>x.charAt(0).toUpperCase()+x.slice(1)).join(' ')}}
+  function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+  function panel(subtitle){return `<div class="oa-panel"><div class="oa-head"><div><strong>OLANET AI</strong><small>${escapeHtml(subtitle)}</small></div><button class="oa-close" data-close>×</button></div><div class="oa-messages" data-messages><div class="oa-msg bot">Hi. I'm OLANET AI. How can I help?</div></div><form class="oa-form" data-form><textarea class="oa-input" data-input rows="2" placeholder="Ask OLANET AI..."></textarea><button class="oa-send" data-send>Send</button></form></div>`}
+  function render(){const circle=currentCircle();circleId=circle?.id||null;circleName=circle?.name||'';root.innerHTML=`${circle?'<button class="oa-circle" data-circle-launch>🤖 OLANET AI</button>':''}${open?panel('OLANET account support'):'<button class="oa-launch" data-support-launch>🤖 OLANET AI Support</button>'}`;const launch=root.querySelector('[data-support-launch]');if(launch)launch.onclick=()=>{open=true;render()};const circleLaunch=root.querySelector('[data-circle-launch]');if(circleLaunch)circleLaunch.onclick=()=>{circleOpen=true;open=false;renderCircle()};const close=root.querySelector('[data-close]');if(close)close.onclick=()=>{open=false;render()};const form=root.querySelector('[data-form]');if(form)form.addEventListener('submit',sendSupport)}
+  function renderCircle(){root.innerHTML=`<button class="oa-circle" data-circle-close>🤖 OLANET AI</button>${circleOpen?panel(circleName):''}`;const close=root.querySelector('[data-close]');if(close)close.onclick=()=>{circleOpen=false;renderCircle()};const circleButton=root.querySelector('[data-circle-close]');if(circleButton)circleButton.onclick=()=>{circleOpen=false;render()};const form=root.querySelector('[data-form]');if(form)form.addEventListener('submit',sendCircle)}
+  async function send(endpoint,extra,form){const input=form.querySelector('[data-input]'),sendButton=form.querySelector('[data-send]'),messages=form.parentElement.querySelector('[data-messages]'),text=input.value.trim();if(!text)return;messages.insertAdjacentHTML('beforeend',`<div class="oa-msg user">${escapeHtml(text)}</div>`);input.value='';sendButton.disabled=true;messages.insertAdjacentHTML('beforeend','<div class="oa-msg bot" data-loading>Thinking…</div>');messages.scrollTop=messages.scrollHeight;try{const response=await fetch(endpoint,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,...extra})});const data=await response.json().catch(()=>({}));const loading=messages.querySelector('[data-loading]');if(loading)loading.remove();messages.insertAdjacentHTML('beforeend',`<div class="oa-msg bot">${escapeHtml(data.response||data.error||'I could not answer right now.')}</div>`)}catch{const loading=messages.querySelector('[data-loading]');if(loading)loading.textContent='Connection problem. Please try again.'}sendButton.disabled=false;messages.scrollTop=messages.scrollHeight}
+  function sendSupport(event){event.preventDefault();send('/api/support/ai',{},event.currentTarget)}function sendCircle(event){event.preventDefault();send('/api/ai/circle',{circleId},event.currentTarget)}
+  let lastPath=location.pathname;setInterval(()=>{if(location.pathname!==lastPath){lastPath=location.pathname;open=false;circleOpen=false;render()}},400);render();
 })();
