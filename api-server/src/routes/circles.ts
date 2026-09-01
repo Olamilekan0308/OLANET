@@ -13,12 +13,15 @@ router.get("/circles", async (req,res):Promise<void>=>{
     const session=await auth(req,res); if(!session)return;
     const r=await supabase("/rest/v1/circles?select=id,name,description,icon_url,created_by,created_at&order=id",session.token,{method:"GET"});
     const circles=await readJson<Array<Record<string,unknown>>>(r); if(!r.ok||!circles){res.status(502).json({error:"Unable to load Circles."});return;}
+    const countsResponse=await supabase("/rest/v1/rpc/get_circle_member_counts",session.token,{method:"POST",body:"{}"});
+    const counts=await readJson<Array<{circle_id:number;member_count:number}>>(countsResponse) || [];
+    const countMap=new Map(counts.map(item=>[Number(item.circle_id),Number(item.member_count)]));
     const result=[];
     for(const circle of circles){
       const id=Number(circle.id);
-      const membersResponse=await supabase(`/rest/v1/circle_members?select=user_id&circle_id=eq.${id}`,session.token,{method:"GET"});
-      const members=await readJson<Array<{user_id:string}>>(membersResponse) || [];
-      result.push({...circle,memberCount:members.length,isMember:members.some(m=>m.user_id===session.user.id)});
+      const membershipResponse=await supabase(`/rest/v1/circle_members?select=user_id&circle_id=eq.${id}&user_id=eq.${encodeURIComponent(session.user.id)}&limit=1`,session.token,{method:"GET"});
+      const membership=await readJson<Array<{user_id:string}>>(membershipResponse) || [];
+      result.push({...circle,memberCount:countMap.get(id)||0,isMember:membership.length>0});
     }
     res.json({circles:result});
   }catch(error){req.log.error({error},"Circle list failed");res.status(502).json({error:"Unable to load Circles."});}
