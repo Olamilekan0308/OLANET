@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile"
+}
