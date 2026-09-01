@@ -1,0 +1,3 @@
+# OLANET Vercel deployment
+# Import the /skillhub directory as the Vercel project root.
+# Configure the API separately if needed, or deploy the monorepo with a compatible serverless adapter.
