@@ -23,6 +23,7 @@ async function updateProfile(user, token, updates) { const allowed = ["username"
 const MEDIA_TYPES = new Set(["image", "video", "voice", "video_note"]);
 function parseMedia(input) { const mediaType = typeof input?.media_type === "string" ? input.media_type.trim().toLowerCase() : null; const mediaUrl = typeof input?.media_url === "string" ? input.media_url.trim() : null; const isViewOnce = Boolean(input?.is_view_once); if (isViewOnce && (!mediaType || !MEDIA_TYPES.has(mediaType) || !mediaUrl)) return { error: "View Once is available only for pictures, videos, voice notes, and video notes." }; if (mediaType && !MEDIA_TYPES.has(mediaType)) return { error: "Unsupported media type." }; if (mediaType && !mediaUrl) return { error: "A media URL is required when media type is provided." }; return { isViewOnce, mediaType, mediaUrl }; }
 async function filterConsumed(messages, token, userId) { if (!Array.isArray(messages) || !messages.length) return messages || []; const ids = messages.map(m => m?.id).filter(Number.isInteger); if (!ids.length) return messages; const r = await supabase(`/rest/v1/chat_message_views?user_id=eq.${encodeURIComponent(userId)}&message_id=in.(${ids.join(",")})&select=message_id`, { headers: { Authorization: `Bearer ${token}` } }); const rows = await json(r) || []; const consumed = new Set(rows.map(x => x.message_id)); return messages.filter(m => !(m.is_view_once && m.sender_id !== userId && consumed.has(m.id))); }
+function cleanHistory(value) { if (!Array.isArray(value)) return []; return value.filter(item => item && typeof item === "object" && (item.role === "user" || item.role === "assistant") && typeof item.content === "string" && item.content.trim()).slice(-12).map(item => ({ role: item.role, content: item.content.trim().slice(0, 12000) })); }
 
 app.use("/api/profile/avatar", express.raw({ type: ["image/*"], limit: "8mb" }));
 app.use(express.json({ limit: "2mb" }));
@@ -50,5 +51,31 @@ app.post("/api/conversations", async (req, res) => { const s = await requireAuth
 app.get("/api/conversations/:id/messages", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const r = await supabase(`/rest/v1/chat_messages?conversation_id=eq.${encodeURIComponent(req.params.id)}&select=*&order=created_at.desc&limit=100`, { headers: { Authorization: `Bearer ${s.token}` } }); const d = await json(r); const messages = Array.isArray(d) ? d.reverse() : d || []; return res.status(r.status).json(await filterConsumed(messages, s.token, s.user.id)); });
 app.post("/api/conversations/:id/messages", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const text = typeof req.body?.body === "string" ? req.body.body.trim() : ""; const media = parseMedia(req.body || {}); if (media.error) return res.status(400).json({ error: media.error }); if (!text && !media.mediaUrl) return res.status(400).json({ error: "Message or media is required" }); const r = await supabase("/rest/v1/chat_messages?select=*", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=representation" }, body: JSON.stringify({ conversation_id: Number(req.params.id), sender_id: s.user.id, body: text, reply_to_id: req.body?.reply_to_id || null, is_view_once: media.isViewOnce, media_type: media.mediaType, media_url: media.mediaUrl }) }); return res.status(r.ok ? 201 : r.status).json(await json(r) || {}); });
 app.post("/api/messages/:id/view-once", async (req, res) => { const s = await requireAuth(req, res); if (!s) return; const id = Number(req.params.id); if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid message id" }); const r = await supabase(`/rest/v1/chat_messages?id=eq.${id}&select=id,sender_id,is_view_once&limit=1`, { headers: { Authorization: `Bearer ${s.token}` } }); const rows = await json(r) || []; const m = rows[0]; if (!m) return res.status(404).json({ error: "Message not found" }); if (!m.is_view_once) return res.status(400).json({ error: "This message is not view-once." }); if (m.sender_id === s.user.id) return res.status(400).json({ error: "The sender cannot consume their own view-once message." }); const prior = await supabase(`/rest/v1/chat_message_views?message_id=eq.${id}&user_id=eq.${s.user.id}&select=message_id&limit=1`, { headers: { Authorization: `Bearer ${s.token}` } }); if ((await json(prior) || []).length) return res.status(409).json({ error: "This view-once message has already been opened." }); const write = await supabase("/rest/v1/chat_message_views", { method: "POST", headers: { Authorization: `Bearer ${s.token}`, Prefer: "return=minimal" }, body: JSON.stringify({ message_id: id, user_id: s.user.id }) }); if (!write.ok) return res.status(403).json({ error: "You cannot open this message." }); return res.json({ ok: true, consumed: true }); });
+
+app.post("/api/ai/circle", async (req, res) => {
+  try {
+    const s = await requireAuth(req, res);
+    if (!s) return;
+    const circleId = Number(req.body?.circleId);
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!Number.isInteger(circleId) || circleId <= 0 || !message) return res.status(400).json({ error: "circleId and message are required." });
+    if (message.length > 12000) return res.status(400).json({ error: "Message is too long." });
+    const circleResponse = await supabase(`/rest/v1/circles?select=id,name,description&id=eq.${circleId}&limit=1`, { headers: { Authorization: `Bearer ${s.token}` } });
+    const circles = await json(circleResponse);
+    const circle = Array.isArray(circles) ? circles[0] : null;
+    if (!circle) return res.status(404).json({ error: "Circle not found." });
+    const configResponse = await supabase(`/rest/v1/circle_ai_configs?select=ai_name,instructions,knowledge,enabled&circle_id=eq.${circleId}&limit=1`, { headers: { Authorization: `Bearer ${s.token}` } });
+    const configs = await json(configResponse);
+    const config = Array.isArray(configs) ? configs[0] : null;
+    if (config?.enabled === false) return res.status(403).json({ error: "OLANET AI is currently disabled for this department." });
+    const systemPrompt = `You are OLANET AI, the official AI assistant inside the OLANET department "${circle.name}". Answer questions according to this department's subject and community context. Be accurate, practical and clear. Do not claim to be a human administrator. Circle description: ${circle.description || "No description provided."}\nAdministrator instructions: ${config?.instructions || "Give helpful answers appropriate for this department."}\nAdministrator knowledge: ${config?.knowledge || "Use your general knowledge and clearly state uncertainty when necessary."}`;
+    const aiResponse = await supabase("/functions/v1/ask-ai", { method: "POST", headers: { Authorization: `Bearer ${s.token}` }, body: JSON.stringify({ message, systemPrompt, history: cleanHistory(req.body?.history), model: "gpt-5.6-luna" }) });
+    const data = await json(aiResponse);
+    if (!aiResponse.ok || !data?.ok || !data?.response) return res.status(502).json({ error: data?.error?.message || "OLANET AI could not answer right now." });
+    return res.json({ aiName: config?.ai_name || "OLANET AI", circleId, sessionId: Number.isInteger(req.body?.sessionId) ? req.body.sessionId : null, response: data.response });
+  } catch (e) {
+    return res.status(502).json({ error: e?.message || "OLANET AI is temporarily unavailable." });
+  }
+});
 
 export default function handler(req, res) { return app(req, res); }
