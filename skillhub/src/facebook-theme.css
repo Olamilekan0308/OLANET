@@ -1,0 +1,11 @@
+/* OLANET social visual system: clean white surfaces, soft gray borders, blue actions. */
+:root{--background:210 20% 98%;--card:0 0% 100%;--card-border:214 16% 90%;--border:214 16% 90%;--input:214 16% 90%;--primary:214 89% 52%;--primary-foreground:0 0% 100%;--secondary:210 16% 96%;--secondary-foreground:214 20% 15%;--muted:210 16% 96%;--muted-foreground:214 8% 45%;--accent:214 89% 52%;--accent-foreground:0 0% 100%;--foreground:214 20% 12%;--radius:.75rem}
+html,body{background:#f0f2f5!important;color:#1c1e21!important}
+body{font-family:Arial,Helvetica,sans-serif!important}
+button,a{transition:background-color .15s ease,color .15s ease,border-color .15s ease,transform .12s ease}
+input,textarea,select{background:#fff!important;border-color:#ccd0d5!important;color:#1c1e21!important}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #1877f2!important;outline-offset:2px}
+/* Existing OLANET cream surfaces become neutral Facebook-like surfaces. */
+.bg-\\[\\#fffaf1\\]{background-color:#fff!important}.bg-\\[\\#f8f2e8\\]{background-color:#f0f2f5!important}.bg-\\[\\#f6eddf\\]{background-color:#f0f2f5!important}.bg-\\[\\#f1e4cc\\]{background-color:#e4e6eb!important}
+.text-\\[\\#1d4348\\]{color:#1c1e21!important}.text-\\[\\#365b60\\]{color:#050505!important}.text-\\[\\#527075\\]{color:#65676b!important}
+.border-\\[\\#dfd2c0\\],.border-\\[\\#eadfce\\],.border-\\[\\#ddceba\\]{border-color:#dddfe2!important}
