@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "pnpm --dir skillhub run build",
+  "outputDirectory": "skillhub/dist",
   "framework": null,
   "installCommand": "pnpm install --frozen-lockfile"
 }
