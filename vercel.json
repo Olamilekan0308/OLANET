@@ -4,5 +4,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "skillhub/dist/public",
   "framework": "vite",
-  "installCommand": "npm install --no-package-lock"
+  "installCommand": "npm install --no-package-lock",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
