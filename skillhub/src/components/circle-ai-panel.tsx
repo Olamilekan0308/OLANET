@@ -3,7 +3,6 @@ import { Bot, Check, Loader2, Save, Send, Settings2, Sparkles } from 'lucide-rea
 
 type Config = { ai_name: string; instructions: string; knowledge: string; enabled: boolean; updated_at?: string };
 type Props = { circleId: number; circleName: string };
-
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 export function CircleAiPanel({ circleId, circleName }: Props) {
@@ -13,22 +12,28 @@ export function CircleAiPanel({ circleId, circleName }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    fetch(`/api/ai/circle/config?circleId=${circleId}`, { credentials: 'include' })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'Unable to load Circle AI settings.');
-        if (!active) return;
-        setConfig(data.config);
-        setIsAdmin(Boolean(data.admin));
-      })
-      .catch((err) => active && setError(err instanceof Error ? err.message : 'Unable to load Circle AI settings.'))
+    setLoading(true); setError(''); setChat([]); setSessionId(null);
+    Promise.all([
+      fetch(`/api/ai/circle/config?circleId=${circleId}`, { credentials: 'include' }),
+      fetch(`/api/ai/circle/history?circleId=${circleId}`, { credentials: 'include' }),
+    ]).then(async ([configResponse, historyResponse]) => {
+      const configData = await configResponse.json().catch(() => ({}));
+      const historyData = await historyResponse.json().catch(() => ({}));
+      if (!configResponse.ok) throw new Error(configData.error || 'Unable to load Circle AI settings.');
+      if (!historyResponse.ok) throw new Error(historyData.error || 'Unable to load Circle AI history.');
+      if (!active) return;
+      setConfig(configData.config);
+      setIsAdmin(Boolean(configData.admin));
+      setChat(Array.isArray(historyData.messages) ? historyData.messages : []);
+      setSessionId(Number.isInteger(historyData.sessionId) ? historyData.sessionId : null);
+    }).catch((err) => active && setError(err instanceof Error ? err.message : 'Unable to load Circle AI.'))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [circleId]);
@@ -47,15 +52,17 @@ export function CircleAiPanel({ circleId, circleName }: Props) {
   async function sendMessage() {
     const text = message.trim();
     if (!text || chatLoading || !config.enabled) return;
-    const nextChat = [...chat, { role: 'user' as const, content: text }];
+    const previousChat = chat;
+    const nextChat = [...previousChat, { role: 'user' as const, content: text }];
     setChat(nextChat); setMessage(''); setChatLoading(true); setError('');
     try {
-      const response = await fetch('/api/ai/circle', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ circleId, message: text, history: chat }) });
+      const response = await fetch('/api/ai/circle', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ circleId, message: text, sessionId: sessionId ?? undefined, history: previousChat }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'The Circle AI could not answer right now.');
+      setSessionId(Number.isInteger(data.sessionId) ? data.sessionId : sessionId);
       setChat([...nextChat, { role: 'assistant', content: data.response }]);
       if (data.aiName && data.aiName !== config.ai_name) setConfig((current) => ({ ...current, ai_name: data.aiName }));
-    } catch (err) { setChat(chat); setError(err instanceof Error ? err.message : 'The Circle AI could not answer right now.'); }
+    } catch (err) { setChat(previousChat); setError(err instanceof Error ? err.message : 'The Circle AI could not answer right now.'); }
     finally { setChatLoading(false); }
   }
 
@@ -70,7 +77,7 @@ export function CircleAiPanel({ circleId, circleName }: Props) {
     {error && <div className="mt-4 rounded-xl border border-[#edcaca] bg-[#fff1f1] p-3 text-sm font-semibold text-[#9a4949]">{error}</div>}
 
     <div className="mt-4 space-y-3" aria-live="polite">
-      {chat.length === 0 && <div className="rounded-xl bg-[#f6eddf] p-4 text-sm leading-6 text-[#527075]">Ask {config.ai_name} a question about {circleName}. The assistant uses the administrator's Circle knowledge first, then reliable general knowledge.</div>}
+      {chat.length === 0 && <div className="rounded-xl bg-[#f6eddf] p-4 text-sm leading-6 text-[#527075]">Ask {config.ai_name} a question about {circleName}. Your conversation is saved to your Circle AI session so it can be restored when you return.</div>}
       {chat.map((item, index) => <div key={`${item.role}-${index}`} className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-6 ${item.role === 'user' ? 'bg-[#2f817d] text-white' : 'bg-[#f1e4cc] text-[#365b60]'}`}><p className="whitespace-pre-wrap">{item.content}</p></div></div>)}
       {chatLoading && <div className="flex items-center gap-2 text-xs font-bold text-[#789093]"><Bot size={15} /> Thinking…</div>}
     </div>
