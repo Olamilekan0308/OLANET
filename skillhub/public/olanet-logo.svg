@@ -1,0 +1,6 @@
+<svg width="640" height="180" viewBox="0 0 640 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="10" y="10" width="160" height="160" rx="42" fill="#0B5ED7"/>
+<path d="M89 49C62 49 43 66 43 90C43 114 62 131 89 131C116 131 135 114 135 90C135 66 116 49 89 49Z" stroke="white" stroke-width="16"/>
+<path d="M89 70C78 70 70 78 70 90C70 102 78 110 89 110C100 110 108 102 108 90C108 78 100 70 89 70Z" fill="#28C7B7"/>
+<text x="200" y="116" fill="#123B67" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="800" letter-spacing="-4">OLANET</text>
+</svg>
