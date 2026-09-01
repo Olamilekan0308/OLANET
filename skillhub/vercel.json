@@ -3,5 +3,8 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
   "framework": null,
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }
