@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import olanetAIRouter from "./olanet-ai-v2";
 import supportAIRouter from "./support-ai";
 import circlesRouter from "./circles";
+import socialRouter from "./social";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(authRouter);
 router.use(olanetAIRouter);
 router.use(supportAIRouter);
 router.use(circlesRouter);
+router.use(socialRouter);
 
 export default router;
