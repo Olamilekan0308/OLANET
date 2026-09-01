@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, X } from 'lucide-react';
 import { CircleAiPanel } from '@/components/circle-ai-panel';
 
@@ -16,10 +16,19 @@ const circleMap: Record<string, { id: number; name: string }> = {
 
 export function CircleAiLauncher() {
   const [open, setOpen] = useState(false);
-  const path = typeof window === 'undefined' ? '' : window.location.pathname;
+  const [path, setPath] = useState(() => typeof window === 'undefined' ? '' : window.location.pathname);
+
+  useEffect(() => {
+    const refresh = () => setPath(window.location.pathname);
+    const timer = window.setInterval(refresh, 300);
+    window.addEventListener('popstate', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('popstate', refresh); };
+  }, []);
+
   const match = path.match(/^\/circles\/([^/]+)/);
   const slug = match ? decodeURIComponent(match[1]) : '';
   const circle = circleMap[slug];
+  useEffect(() => { if (!circle) setOpen(false); }, [slug]);
 
   if (!circle) return null;
 
