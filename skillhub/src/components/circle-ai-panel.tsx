@@ -17,6 +17,19 @@ export function CircleAiPanel({ circleId, circleName }: Props) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
+  async function loadHistory(silent = false) {
+    try {
+      const response = await fetch(`/api/ai/circle/history?circleId=${circleId}`, { credentials: 'include' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Unable to load Circle AI history.');
+      setChat(Array.isArray(data.messages) ? data.messages : []);
+      setSessionId(Number.isInteger(data.sessionId) ? data.sessionId : null);
+      if (!silent) setError('');
+    } catch (err) {
+      if (!silent) setError(err instanceof Error ? err.message : 'Unable to load Circle AI history.');
+    }
+  }
+
   useEffect(() => {
     let active = true;
     setLoading(true); setError(''); setChat([]); setSessionId(null);
@@ -37,6 +50,13 @@ export function CircleAiPanel({ circleId, circleName }: Props) {
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [circleId]);
+
+  // Poll the shared Circle history so members currently viewing the Circle see new AI answers without refreshing.
+  useEffect(() => {
+    if (loading) return;
+    const timer = window.setInterval(() => { void loadHistory(true); }, 4000);
+    return () => window.clearInterval(timer);
+  }, [circleId, loading]);
 
   async function saveSettings() {
     setSaving(true); setError(''); setSaved(false);
@@ -77,7 +97,7 @@ export function CircleAiPanel({ circleId, circleName }: Props) {
     {error && <div className="mt-4 rounded-xl border border-[#edcaca] bg-[#fff1f1] p-3 text-sm font-semibold text-[#9a4949]">{error}</div>}
 
     <div className="mt-4 space-y-3" aria-live="polite">
-      {chat.length === 0 && <div className="rounded-xl bg-[#f6eddf] p-4 text-sm leading-6 text-[#527075]">Ask {config.ai_name} a question about {circleName}. Your conversation is saved to your Circle AI session so it can be restored when you return.</div>}
+      {chat.length === 0 && <div className="rounded-xl bg-[#f6eddf] p-4 text-sm leading-6 text-[#527075]">Ask {config.ai_name} a question about {circleName}. Questions and answers are shared with members of this Circle.</div>}
       {chat.map((item, index) => <div key={`${item.role}-${index}`} className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-6 ${item.role === 'user' ? 'bg-[#2f817d] text-white' : 'bg-[#f1e4cc] text-[#365b60]'}`}><p className="whitespace-pre-wrap">{item.content}</p></div></div>)}
       {chatLoading && <div className="flex items-center gap-2 text-xs font-bold text-[#789093]"><Bot size={15} /> Thinking…</div>}
     </div>
