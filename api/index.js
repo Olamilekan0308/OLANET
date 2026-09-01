@@ -1,4 +1,4 @@
-import app from "../api-server/src/app.ts";
+import app from "../api-server/src/vercel-app.ts";
 
 export const config = {
   maxDuration: 30,
