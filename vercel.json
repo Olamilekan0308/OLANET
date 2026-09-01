@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "pnpm --dir skillhub run build",
+  "buildCommand": "pnpm --filter @workspace/skillhub run build",
   "outputDirectory": "skillhub/dist",
   "framework": "vite",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install --no-frozen-lockfile"
 }
