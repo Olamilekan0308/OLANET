@@ -6,7 +6,7 @@
   "framework": "vite",
   "installCommand": "npm install --no-package-lock",
   "rewrites": [
-    { "source": "/api/people", "destination": "/api/people.js" },
+    { "source": "/api/people", "destination": "/api/index.js" },
     { "source": "/api/conversations", "destination": "/api/conversations.js" },
     { "source": "/api/conversations/:id/messages", "destination": "/api/conversations/:id/messages.js" },
     { "source": "/api/friends", "destination": "/api/social?route=friends" },
