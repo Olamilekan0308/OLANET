@@ -1,14 +1,14 @@
-/* OLANET social visual system: clean white surfaces, soft gray borders, blue actions. */
-:root{--background:210 20% 98%;--card:0 0% 100%;--card-border:214 16% 90%;--border:214 16% 90%;--input:214 16% 90%;--primary:214 89% 52%;--primary-foreground:0 0% 100%;--secondary:210 16% 96%;--secondary-foreground:214 20% 15%;--muted:210 16% 96%;--muted-foreground:214 8% 45%;--accent:214 89% 52%;--accent-foreground:0 0% 100%;--foreground:214 20% 12%;--radius:.75rem}
-html,body{background:#f0f2f5!important;color:#1c1e21!important} body{font-family:Arial,Helvetica,sans-serif!important}
+/* OLANET social visual system: clean white surfaces, soft gray borders, teal actions. */
+:root{--background:174 20% 98%;--card:0 0% 100%;--card-border:174 16% 90%;--border:174 16% 90%;--input:174 16% 90%;--primary:174 47% 35%;--primary-foreground:0 0% 100%;--secondary:174 16% 96%;--secondary-foreground:174 20% 15%;--muted:174 16% 96%;--muted-foreground:174 8% 45%;--accent:174 47% 35%;--accent-foreground:0 0% 100%;--foreground:174 20% 12%;--radius:.75rem}
+html,body{background:#f4f7f6!important;color:#1d4348!important} body{font-family:Arial,Helvetica,sans-serif!important}
 html{scroll-behavior:auto!important}
 button,a{transition:background-color .15s ease,color .15s ease,border-color .15s ease,transform .12s ease}
-input,textarea,select{background:#fff!important;border-color:#ccd0d5!important;color:#1c1e21!important}
-button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #1877f2!important;outline-offset:2px}
-.bg-\[\#fffaf1\]{background-color:#fff!important}.bg-\[\#f8f2e8\]{background-color:#f0f2f5!important}.bg-\[\#f6eddf\]{background-color:#f0f2f5!important}.bg-\[\#f1e4cc\]{background-color:#e4e6eb!important}
-.text-\[\#1d4348\]{color:#1c1e21!important}.text-\[\#365b60\]{color:#050505!important}.text-\[\#527075\]{color:#65676b!important}
-.border-\[\#dfd2c0\],.border-\[\#eadfce\],.border-\[\#ddceba\]{border-color:#dddfe2!important}
-/* Instant route changes: keep Wouter navigation in-place with no page-entry animation. */
+input,textarea,select{background:#fff!important;border-color:#d8e4e2!important;color:#1d4348!important}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #2f817d!important;outline-offset:2px}
+.bg-\\[\\#fffaf1\\]{background-color:#fff!important}.bg-\\[\\#f8f2e8\\]{background-color:#f4f7f6!important}.bg-\\[\\#f6eddf\\]{background-color:#f4f7f6!important}.bg-\\[\\#f1e4cc\\]{background-color:#e8f1ef!important}
+.text-\\[\\#1d4348\\]{color:#1d4348!important}.text-\\[\\#365b60\\]{color:#365b60!important}.text-\\[\\#527075\\]{color:#527075!important}
+.border-\\[\\#dfd2c0\\],.border-\\[\\#eadfce\\],.border-\\[\\#ddceba\\]{border-color:#d8e4e2!important}
+/* Compatibility for older social-hub blue actions while keeping the component source unchanged. */
+.bg-\\[\\#1877f2\\]{background-color:#2f817d!important}.hover\\:bg-\\[\\#166fe5\\]:hover{background-color:#266d69!important}.text-\\[\\#1877f2\\]{color:#2f817d!important}.bg-\\[\\#e7f3ff\\]{background-color:#e1f0ee!important}.text-\\[\\#1c1e21\\]{color:#1d4348!important}
 .page-enter{animation:none!important}
-/* Profile has no logout. The remaining sidebar/menu logout is intentionally kept. */
 [data-testid="button-log-out"]{display:none!important}
