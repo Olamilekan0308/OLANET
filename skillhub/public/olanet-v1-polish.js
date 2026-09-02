@@ -1,5 +1,6 @@
 (() => {
   const snapTerms = ['snap & solve', 'snap and solve'];
+  const callTerms = ['call', 'voice call', 'video call', 'start call'];
 
   function hideV2Entries() {
     document.querySelectorAll('a,button,[role="button"]').forEach((el) => {
@@ -9,6 +10,32 @@
         el.style.setProperty('display', 'none', 'important');
       }
     });
+  }
+
+  function hideUnfinishedCalls() {
+    document.querySelectorAll('button,a,[role="button"]').forEach((el) => {
+      const text = (el.textContent || '').trim().toLowerCase();
+      const label = `${text} ${(el.getAttribute('aria-label') || '').toLowerCase()} ${(el.getAttribute('title') || '').toLowerCase()}`;
+      if (callTerms.some((term) => label === term || label.includes(term))) {
+        el.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  function addPeopleNavigation() {
+    if (window.location.pathname === '/people') return;
+    if (document.querySelector('a[href="/people"], [data-olanet-people-link]')) return;
+    const candidates = [...document.querySelectorAll('nav,aside,header')];
+    const host = candidates.find((el) => el.querySelector('a[href="/"],a[href="/circles"],a[href="/messages"]')) || candidates[0];
+    if (!host) return;
+    const link = document.createElement('a');
+    link.href = '/people';
+    link.setAttribute('data-olanet-people-link', 'true');
+    link.textContent = 'People';
+    link.className = 'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[#2f817d] hover:bg-[#e8f1ef] transition';
+    const messageLink = host.querySelector('a[href="/messages"]');
+    if (messageLink?.parentElement) messageLink.parentElement.insertBefore(link, messageLink);
+    else host.appendChild(link);
   }
 
   const n = (value) => {
@@ -37,8 +64,9 @@
         const voltage = values[0] ?? 0;
         const resistance = values[1] ?? 0;
         const current = resistance ? voltage / resistance : 0;
-        output = `${fmt(current * 1000, 2)} mA`;
-        formula = `I = V / R = ${fmt(voltage)} / ${fmt(resistance)} = ${fmt(current * 1000, 2)} mA`;
+        const power = voltage * current;
+        output = `${fmt(current * 1000, 2)} mA • ${fmt(power, 2)} W`;
+        formula = `I = V/R; P = VI = ${fmt(power, 2)} W.`;
         break;
       }
       case 'three': {
@@ -46,16 +74,18 @@
         const current = values[1] ?? 0;
         const pf = values[2] ?? 0;
         const kw = Math.sqrt(3) * voltage * current * pf / 1000;
-        output = `${fmt(kw, 2)} kW`;
-        formula = `P = √3 × V × I × PF = ${fmt(kw, 2)} kW`;
+        const kva = Math.sqrt(3) * voltage * current / 1000;
+        const kvar = Math.sqrt(Math.max(0, kva * kva - kw * kw));
+        output = `${fmt(kw, 2)} kW • ${fmt(kva, 2)} kVA • ${fmt(kvar, 2)} kVAr`;
+        formula = `P = √3VI·PF; S = √3VI; Q = √(S²−P²).`;
         break;
       }
       case 'rc': {
         const resistance = values[0] ?? 0;
         const capacitance = values[1] ?? 0;
         const tau = resistance * capacitance;
-        output = `${fmt(tau, 4)} seconds`;
-        formula = `τ = R × C. For 63.2% charge/discharge, t ≈ τ; 99.3% ≈ 5τ.`;
+        output = `${fmt(tau, 4)} s • 5τ = ${fmt(tau * 5, 4)} s`;
+        formula = `τ = RC; ≈63.2% at 1τ, ≈99.3% at 5τ.`;
         break;
       }
       case 'lumen': {
@@ -70,7 +100,7 @@
         const area = values[0] ?? 0;
         const awg = area <= 1.5 ? 16 : area <= 2.5 ? 14 : area <= 4 ? 12 : area <= 6 ? 10 : area <= 10 ? 8 : 6;
         output = `${awg} AWG (approx.)`;
-        formula = `Approximate cross-section mapping. Actual cable selection depends on conductor material, insulation, installation method and current rating.`;
+        formula = `Approximate cross-section mapping. Verify cable ampacity against conductor, insulation and installation conditions.`;
         break;
       }
       case 'hp': {
@@ -121,6 +151,8 @@
 
   function bind() {
     hideV2Entries();
+    hideUnfinishedCalls();
+    addPeopleNavigation();
     calculator();
   }
 
@@ -134,5 +166,5 @@
   const observer = new MutationObserver(() => bind());
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('load', bind);
-  setInterval(hideV2Entries, 1000);
+  setInterval(() => { hideV2Entries(); hideUnfinishedCalls(); addPeopleNavigation(); }, 1000);
 })();
