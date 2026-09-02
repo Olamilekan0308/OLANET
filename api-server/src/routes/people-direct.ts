@@ -5,6 +5,7 @@ const router: IRouter = Router();
 const ACCESS_COOKIE = "skillhub_access_token";
 
 type User = { id: string; email?: string | null };
+type PersonRow = { id?: string; full_name?: string | null; username?: string | null; avatar_url?: string | null; bio?: string | null };
 
 async function readJson<T>(response: { text(): Promise<string> }): Promise<T | null> {
   const text = await response.text();
@@ -35,33 +36,52 @@ async function auth(req: Request, res: Response): Promise<{ user: User; token: s
   return { user, token };
 }
 
+function cleanSearch(value: string) {
+  // PostgREST filter syntax treats several characters as operators. Keep search
+  // input deliberately conservative so names/usernames cannot break the filter.
+  return value.replace(/[\\%_,()*.]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
 router.get("/people", async (req, res): Promise<void> => {
   const session = await auth(req, res);
   if (!session) return;
+
   try {
-    const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
-    const params = new URLSearchParams({
+    const q = typeof req.query.q === "string" ? cleanSearch(req.query.q) : "";
+    const base = new URLSearchParams({
       select: "id,full_name,username,avatar_url,bio",
       order: "full_name.asc",
       limit: "100",
     });
-    if (q) {
-      const safe = q.replace(/[\\%_,()]/g, " ").trim();
-      if (safe) params.set("or", `(full_name.ilike.*${safe}*,username.ilike.*${safe}*)`);
-    }
-    const r = await request(`/rest/v1/profiles?${params.toString()}`);
-    const data = await readJson<unknown>(r);
-    if (!r.ok) {
+
+    // Use separate indexed filters instead of a complex `or=(...)` expression.
+    // This is more tolerant of PostgREST versions/configuration and makes the
+    // People search work consistently for either a person's name or username.
+    const paths = q
+      ? [
+          `/rest/v1/profiles?${new URLSearchParams([...base, ["full_name", `ilike.*${q}*`]])}`,
+          `/rest/v1/profiles?${new URLSearchParams([...base, ["username", `ilike.*${q}*`]])}`,
+        ]
+      : [`/rest/v1/profiles?${base.toString()}`];
+
+    const responses = await Promise.all(paths.map(path => request(path)));
+    const payloads = await Promise.all(responses.map(readJson<unknown>));
+    const failed = responses.findIndex(r => !r.ok);
+    if (failed >= 0) {
       res.status(502).json({ error: "Could not search OLANET users right now." });
       return;
     }
-    const rows = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
+
+    const rows = payloads.flatMap(data => Array.isArray(data) ? data as PersonRow[] : []);
     const seen = new Set<string>();
-    res.json(rows.filter(row => {
+    const result = rows.filter(row => {
       const id = row.id;
       if (typeof id !== "string" || id === session.user.id || seen.has(id)) return false;
-      seen.add(id); return true;
-    }));
+      seen.add(id);
+      return true;
+    });
+
+    res.json(result);
   } catch (error) {
     req.log.error({ error }, "Direct people search failed");
     res.status(502).json({ error: "Could not search OLANET users right now." });
