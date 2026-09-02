@@ -6,6 +6,6 @@ export default function status(req, res) {
   const userId = parts[parts.length - 1] || "";
   url.searchParams.set("route", "status");
   url.searchParams.set("userId", userId);
-  req.url = `${url.pathname}?${url.searchParams.toString()}`;
+  req.url = `/?${url.searchParams.toString()}`;
   return handler(req, res);
 }
