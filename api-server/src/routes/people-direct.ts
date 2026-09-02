@@ -1,0 +1,71 @@
+import { Router, type IRouter, type Request, type Response } from "express";
+import { getSupabaseConfig } from "../lib/supabase-env";
+
+const router: IRouter = Router();
+const ACCESS_COOKIE = "skillhub_access_token";
+
+type User = { id: string; email?: string | null };
+
+async function readJson<T>(response: { text(): Promise<string> }): Promise<T | null> {
+  const text = await response.text();
+  try { return text ? JSON.parse(text) as T : null; } catch { return null; }
+}
+
+async function request(path: string, token?: string, init: RequestInit = {}) {
+  const { url, anonKey, serviceRoleKey } = getSupabaseConfig();
+  const key = serviceRoleKey ?? anonKey;
+  if (!key) throw new Error("Missing Supabase API key");
+  return fetch(`${url}${path}`, {
+    ...init,
+    headers: {
+      apikey: key,
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers || {}),
+    },
+  });
+}
+
+async function auth(req: Request, res: Response): Promise<{ user: User; token: string } | null> {
+  const token = (req.cookies?.[ACCESS_COOKIE] ?? req.signedCookies?.[ACCESS_COOKIE]) as string | undefined;
+  if (!token) { res.status(401).json({ error: "Not authenticated. Please log in again." }); return null; }
+  const r = await request("/auth/v1/user", token);
+  const user = await readJson<User>(r);
+  if (!r.ok || !user?.id) { res.status(401).json({ error: "Session expired. Please log in again." }); return null; }
+  return { user, token };
+}
+
+router.get("/people", async (req, res): Promise<void> => {
+  const session = await auth(req, res);
+  if (!session) return;
+  try {
+    const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+    const params = new URLSearchParams({
+      select: "id,full_name,username,avatar_url,bio",
+      order: "full_name.asc",
+      limit: "100",
+    });
+    if (q) {
+      const safe = q.replace(/[\\%_,()]/g, " ").trim();
+      if (safe) params.set("or", `(full_name.ilike.*${safe}*,username.ilike.*${safe}*)`);
+    }
+    const r = await request(`/rest/v1/profiles?${params.toString()}`);
+    const data = await readJson<unknown>(r);
+    if (!r.ok) {
+      res.status(502).json({ error: "Could not search OLANET users right now." });
+      return;
+    }
+    const rows = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
+    const seen = new Set<string>();
+    res.json(rows.filter(row => {
+      const id = row.id;
+      if (typeof id !== "string" || id === session.user.id || seen.has(id)) return false;
+      seen.add(id); return true;
+    }));
+  } catch (error) {
+    req.log.error({ error }, "Direct people search failed");
+    res.status(502).json({ error: "Could not search OLANET users right now." });
+  }
+});
+
+export default router;
