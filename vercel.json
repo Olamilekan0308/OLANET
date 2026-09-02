@@ -13,6 +13,7 @@
     { "source": "/api/friends/:id", "destination": "/api/social?route=update&id=:id" },
     { "source": "/api/groups/:id/join", "destination": "/api/social/join?groupId=:id" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/people", "destination": "/people.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
