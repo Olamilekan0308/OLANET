@@ -6,7 +6,6 @@
   "framework": "vite",
   "installCommand": "npm install --no-package-lock",
   "rewrites": [
-    { "source": "/api/people", "destination": "/api/social?route=people" },
     { "source": "/api/friends", "destination": "/api/social?route=friends" },
     { "source": "/api/friends/request", "destination": "/api/social?route=request" },
     { "source": "/api/friends/status/:userId", "destination": "/api/social?route=status&userId=:userId" },
