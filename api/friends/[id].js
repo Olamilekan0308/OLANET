@@ -6,6 +6,6 @@ export default function update(req, res) {
   const id = parts[parts.length - 1] || "";
   url.searchParams.set("route", "update");
   url.searchParams.set("id", id);
-  req.url = `${url.pathname}?${url.searchParams.toString()}`;
+  req.url = `/?${url.searchParams.toString()}`;
   return handler(req, res);
 }
