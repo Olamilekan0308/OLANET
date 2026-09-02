@@ -1,0 +1,210 @@
+import express from "express";
+
+const app = express();
+app.use(express.json({ limit: "256kb" }));
+
+const ACCESS_COOKIE = "skillhub_access_token";
+const REFRESH_COOKIE = "skillhub_refresh_token";
+
+function config() {
+  const url = String(process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
+  const key = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "").trim();
+  if (!url || !key) throw new Error("Supabase environment is not configured");
+  return { url, key };
+}
+
+async function sb(path, options = {}) {
+  const { url, key } = config();
+  return fetch(`${url}${path}`, {
+    ...options,
+    headers: {
+      apikey: key,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+}
+
+async function json(r) {
+  const text = await r.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+function cookies(req) {
+  const out = {};
+  for (const part of String(req.headers.cookie || "").split(";")) {
+    const i = part.indexOf("=");
+    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return out;
+}
+
+function setSession(res, data) {
+  res.setHeader("Set-Cookie", [
+    `${ACCESS_COOKIE}=${encodeURIComponent(data.access_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Secure`,
+    `${REFRESH_COOKIE}=${encodeURIComponent(data.refresh_token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000; Secure`,
+  ]);
+}
+
+async function session(req, res) {
+  const c = cookies(req);
+  let token = c[ACCESS_COOKIE];
+  let user = null;
+
+  if (token) {
+    const r = await sb("/auth/v1/user", { headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) user = await json(r);
+  }
+
+  if (!user && c[REFRESH_COOKIE]) {
+    const r = await sb("/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: c[REFRESH_COOKIE] }),
+    });
+    const d = await json(r);
+    if (r.ok && d?.access_token && d?.user) {
+      token = d.access_token;
+      user = d.user;
+      setSession(res, d);
+    }
+  }
+
+  if (!user?.id) {
+    res.status(401).json({ error: "Not authenticated. Please log in again." });
+    return null;
+  }
+  return { user, token };
+}
+
+async function sendFriendRequest(req, res, s) {
+  const other = typeof req.body?.addressee_id === "string" ? req.body.addressee_id.trim() : "";
+  if (!other || other === s.user.id) return res.status(400).json({ error: "Select another OLANET user." });
+
+  const target = await sb(`/rest/v1/profiles?select=id&id=eq.${encodeURIComponent(other)}&limit=1`);
+  const targetRows = await json(target);
+  if (!target.ok) return res.status(target.status).json({ error: "Could not verify that OLANET user.", details: targetRows });
+  if (!Array.isArray(targetRows) || !targetRows.length) return res.status(404).json({ error: "That OLANET user no longer exists." });
+
+  const pair = `or=(and(requester_id.eq.${encodeURIComponent(s.user.id)},addressee_id.eq.${encodeURIComponent(other)}),and(requester_id.eq.${encodeURIComponent(other)},addressee_id.eq.${encodeURIComponent(s.user.id)}))`;
+  const existing = await sb(`/rest/v1/friendships?${pair}&select=*&limit=1`);
+  const rows = await json(existing);
+  if (!existing.ok) return res.status(existing.status).json({ error: "Could not check friendship status.", details: rows });
+  if (Array.isArray(rows) && rows[0]) {
+    const f = rows[0];
+    return res.json({ status: f.status, requestId: f.id, incoming: f.addressee_id === s.user.id });
+  }
+
+  const created = await sb("/rest/v1/friendships", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ requester_id: s.user.id, addressee_id: other, status: "pending" }),
+  });
+  const data = await json(created);
+  if (!created.ok) return res.status(created.status || 502).json({ error: "Could not send friend request.", details: data });
+  const f = Array.isArray(data) ? data[0] : data;
+  return res.status(201).json({ status: "pending", requestId: f?.id || null });
+}
+
+app.get("/", async (req, res) => {
+  try {
+    const s = await session(req, res);
+    if (!s) return;
+    const route = String(req.query.route || "");
+
+    if (route === "people") {
+      const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+      const p = new URLSearchParams({ select: "id,full_name,username,avatar_url,bio", order: "full_name.asc", limit: "100" });
+      if (q) {
+        const safe = q.replace(/[\\%_,()]/g, " ").trim();
+        if (safe) p.set("or", `(full_name.ilike.*${safe}*,username.ilike.*${safe}*)`);
+      }
+      const r = await sb(`/rest/v1/profiles?${p}`);
+      const data = await json(r);
+      if (!r.ok) return res.status(r.status).json({ error: "Could not search OLANET users.", details: data });
+      return res.json((Array.isArray(data) ? data : []).filter(p => p.id !== s.user.id));
+    }
+
+    if (route === "friends") {
+      const r = await sb(`/rest/v1/friendships?or=(requester_id.eq.${encodeURIComponent(s.user.id)},addressee_id.eq.${encodeURIComponent(s.user.id)})&select=*&order=updated_at.desc`);
+      const data = await json(r);
+      return res.status(r.ok ? 200 : r.status).json(data || []);
+    }
+
+    if (route === "request") return sendFriendRequest(req, res, s);
+
+    if (route === "status") {
+      const other = String(req.query.userId || "");
+      if (!other || other === s.user.id) return res.status(400).json({ error: "Invalid friend." });
+      const pair = `or=(and(requester_id.eq.${encodeURIComponent(s.user.id)},addressee_id.eq.${encodeURIComponent(other)}),and(requester_id.eq.${encodeURIComponent(other)},addressee_id.eq.${encodeURIComponent(s.user.id)}))`;
+      const r = await sb(`/rest/v1/friendships?${pair}&select=*&limit=1`);
+      const rows = await json(r);
+      if (!r.ok) return res.status(r.status).json({ error: "Could not load friendship status.", details: rows });
+      const f = Array.isArray(rows) ? rows[0] : null;
+      return res.json(f ? { status: f.status, requestId: f.id, incoming: f.addressee_id === s.user.id } : { status: "none", incoming: false });
+    }
+
+    return res.status(404).json({ error: "Unknown social route." });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "Social service failed." });
+  }
+});
+
+app.post("/", async (req, res) => {
+  try {
+    const s = await session(req, res);
+    if (!s) return;
+    if (String(req.query.route || "") === "request") return sendFriendRequest(req, res, s);
+    return res.status(404).json({ error: "Unknown social route." });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "Social service failed." });
+  }
+});
+
+app.patch("/", async (req, res) => {
+  try {
+    const s = await session(req, res);
+    if (!s) return;
+    if (String(req.query.route || "") !== "update") return res.status(404).json({ error: "Unknown social route." });
+    const id = String(req.query.id || "");
+    const status = req.body?.status;
+    if (!id || !["accepted", "declined", "blocked"].includes(status)) return res.status(400).json({ error: "Invalid friendship update." });
+    const r = await sb(`/rest/v1/friendships?id=eq.${encodeURIComponent(id)}&addressee_id=eq.${encodeURIComponent(s.user.id)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ status, updated_at: new Date().toISOString() }),
+    });
+    const data = await json(r);
+    return res.status(r.ok ? 200 : r.status).json(data || { error: "Could not update friend request." });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "Social service failed." });
+  }
+});
+
+app.post("/join", async (req, res) => {
+  try {
+    const s = await session(req, res);
+    if (!s) return;
+    const groupId = Number(req.query.groupId);
+    if (!Number.isInteger(groupId)) return res.status(400).json({ error: "Invalid group." });
+    const existing = await sb(`/rest/v1/group_members?group_id=eq.${groupId}&user_id=eq.${encodeURIComponent(s.user.id)}&select=*&limit=1`);
+    const rows = await json(existing);
+    if (!existing.ok) return res.status(existing.status).json({ error: "Could not check group membership.", details: rows });
+    if (Array.isArray(rows) && rows[0]) return res.json(rows[0]);
+    const created = await sb("/rest/v1/group_members", {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ group_id: groupId, user_id: s.user.id, role: "member" }),
+    });
+    const data = await json(created);
+    return res.status(created.ok ? 201 : created.status).json(Array.isArray(data) ? data[0] || {} : data || {});
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "Could not join group." });
+  }
+});
+
+export default function handler(req, res) {
+  const pathname = new URL(req.url, "http://localhost").pathname;
+  if (pathname === "/join") return app(req, res);
+  return app(req, res);
+}
