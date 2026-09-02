@@ -69,7 +69,13 @@
 
   function selectedTool() {
     const buttons = [...document.querySelectorAll('[data-testid^="button-tool-"]')];
-    const active = buttons.find((button) => (button.className || '').includes('bg-[#1d4348]'));
+    const active = buttons.find((button) => {
+      const id = button.getAttribute('data-testid') || '';
+      const pressed = button.getAttribute('aria-pressed');
+      const state = button.getAttribute('data-state');
+      const cls = button.className || '';
+      return pressed === 'true' || state === 'active' || cls.includes('bg-[#1d4348]') || cls.includes('bg-teal');
+    });
     return active ? active.getAttribute('data-testid').replace('button-tool-', '') : '';
   }
 
@@ -86,18 +92,21 @@
       case 'ohm': {
         const voltage = values[0] ?? 0;
         const resistance = values[1] ?? 0;
-        const current = resistance ? voltage / resistance : 0;
+        if (resistance <= 0) { output = 'Enter R > 0'; formula = 'Current requires a non-zero resistance.'; break; }
+        const current = voltage / resistance;
         const power = voltage * current;
         output = `${fmt(current * 1000, 2)} mA • ${fmt(power, 2)} W`;
-        formula = `I = V/R; P = VI = ${fmt(power, 2)} W.`;
+        formula = `I = V/R; P = VI.`;
         break;
       }
       case 'three': {
         const voltage = values[0] ?? 0;
         const current = values[1] ?? 0;
-        const pf = values[2] ?? 0;
-        const kw = Math.sqrt(3) * voltage * current * pf / 1000;
+        let pf = values[2] ?? 0;
+        if (pf > 1 && pf <= 100) pf /= 100;
+        pf = Math.min(1, Math.max(0, pf));
         const kva = Math.sqrt(3) * voltage * current / 1000;
+        const kw = kva * pf;
         const kvar = Math.sqrt(Math.max(0, kva * kva - kw * kw));
         output = `${fmt(kw, 2)} kW • ${fmt(kva, 2)} kVA • ${fmt(kvar, 2)} kVAr`;
         formula = `P = √3VI·PF; S = √3VI; Q = √(S²−P²).`;
@@ -108,7 +117,7 @@
         const capacitance = values[1] ?? 0;
         const tau = resistance * capacitance;
         output = `${fmt(tau, 4)} s • 5τ = ${fmt(tau * 5, 4)} s`;
-        formula = `τ = RC; ≈63.2% at 1τ, ≈99.3% at 5τ.`;
+        formula = `τ = RC; ≈63.2% at 1τ and ≈99.3% at 5τ.`;
         break;
       }
       case 'lumen': {
@@ -123,7 +132,7 @@
         const area = values[0] ?? 0;
         const awg = area <= 1.5 ? 16 : area <= 2.5 ? 14 : area <= 4 ? 12 : area <= 6 ? 10 : area <= 10 ? 8 : 6;
         output = `${awg} AWG (approx.)`;
-        formula = `Approximate cross-section mapping. Verify cable ampacity against conductor, insulation and installation conditions.`;
+        formula = `Approximate cross-section mapping. Verify cable ampacity for the actual installation.`;
         break;
       }
       case 'hp': {
@@ -155,7 +164,7 @@
         break;
       case 'resistor':
         output = '470 Ω ±5%';
-        formula = 'Yellow–Violet–Brown–Gold = 47 × 10¹ Ω ±5%.';
+        formula = 'Yellow–Violet–Brown–Gold = 470 Ω ±5%.';
         break;
       default:
         return;
@@ -190,5 +199,5 @@
   const observer = new MutationObserver(() => bind());
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('load', bind);
-  setInterval(() => { hideV2Entries(); hideUnfinishedCalls(); hideDeadV1Controls(); addPeopleNavigation(); }, 1000);
+  setInterval(() => { hideV2Entries(); hideUnfinishedCalls(); hideDeadV1Controls(); addPeopleNavigation(); calculator(); }, 1000);
 })();
