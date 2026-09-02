@@ -5,9 +5,9 @@ html{scroll-behavior:auto!important}
 button,a{transition:background-color .15s ease,color .15s ease,border-color .15s ease,transform .12s ease}
 input,textarea,select{background:#fff!important;border-color:#ccd0d5!important;color:#1c1e21!important}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #1877f2!important;outline-offset:2px}
-.bg-\\[\\#fffaf1\\]{background-color:#fff!important}.bg-\\[\\#f8f2e8\\]{background-color:#f0f2f5!important}.bg-\\[\\#f6eddf\\]{background-color:#f0f2f5!important}.bg-\\[\\#f1e4cc\\]{background-color:#e4e6eb!important}
-.text-\\[\\#1d4348\\]{color:#1c1e21!important}.text-\\[\\#365b60\\]{color:#050505!important}.text-\\[\\#527075\\]{color:#65676b!important}
-.border-\\[\\#dfd2c0\\],.border-\\[\\#eadfce\\],.border-\\[\\#ddceba\\]{border-color:#dddfe2!important}
+.bg-\[\#fffaf1\]{background-color:#fff!important}.bg-\[\#f8f2e8\]{background-color:#f0f2f5!important}.bg-\[\#f6eddf\]{background-color:#f0f2f5!important}.bg-\[\#f1e4cc\]{background-color:#e4e6eb!important}
+.text-\[\#1d4348\]{color:#1c1e21!important}.text-\[\#365b60\]{color:#050505!important}.text-\[\#527075\]{color:#65676b!important}
+.border-\[\#dfd2c0\],.border-\[\#eadfce\],.border-\[\#ddceba\]{border-color:#dddfe2!important}
 /* Instant route changes: keep Wouter navigation in-place with no page-entry animation. */
 .page-enter{animation:none!important}
 /* Profile has no logout. The remaining sidebar/menu logout is intentionally kept. */
