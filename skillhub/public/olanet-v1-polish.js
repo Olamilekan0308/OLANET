@@ -1,6 +1,15 @@
 (() => {
   const snapTerms = ['snap & solve', 'snap and solve'];
   const callTerms = ['call', 'voice call', 'video call', 'start call'];
+  const deadControlPrefixes = [
+    'button-post-menu-', 'button-share-post-', 'button-comment-video-',
+    'button-play-video-', 'button-save-job-', 'button-file-', 'button-saved-',
+  ];
+  const deadControlTests = [
+    'button-add-image-post', 'button-add-topic', 'button-upload-video',
+    'button-new-message', 'button-attach-message', 'button-play-lesson',
+    'button-circle-chat-send', 'button-voice-solution', 'button-browse-all',
+  ];
 
   function hideV2Entries() {
     document.querySelectorAll('a,button,[role="button"]').forEach((el) => {
@@ -17,6 +26,20 @@
       const text = (el.textContent || '').trim().toLowerCase();
       const label = `${text} ${(el.getAttribute('aria-label') || '').toLowerCase()} ${(el.getAttribute('title') || '').toLowerCase()}`;
       if (callTerms.some((term) => label === term || label.includes(term))) {
+        el.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  function hideDeadV1Controls() {
+    document.querySelectorAll('button,a,[role="button"]').forEach((el) => {
+      const testId = (el.getAttribute('data-testid') || '').toLowerCase();
+      const text = (el.textContent || '').trim().toLowerCase();
+      if (deadControlTests.includes(testId) || deadControlPrefixes.some((prefix) => testId.startsWith(prefix))) {
+        el.style.setProperty('display', 'none', 'important');
+        return;
+      }
+      if (text === 'upload video' || text === 'view opportunity' || text === 'discuss' || text === 'browse all') {
         el.style.setProperty('display', 'none', 'important');
       }
     });
@@ -152,6 +175,7 @@
   function bind() {
     hideV2Entries();
     hideUnfinishedCalls();
+    hideDeadV1Controls();
     addPeopleNavigation();
     calculator();
   }
@@ -166,5 +190,5 @@
   const observer = new MutationObserver(() => bind());
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('load', bind);
-  setInterval(() => { hideV2Entries(); hideUnfinishedCalls(); addPeopleNavigation(); }, 1000);
+  setInterval(() => { hideV2Entries(); hideUnfinishedCalls(); hideDeadV1Controls(); addPeopleNavigation(); }, 1000);
 })();
