@@ -4,6 +4,7 @@ import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AuthProvider } from '@/lib/auth';
 import { DirectMessageHub } from '@/components/direct-message-hub';
+import { CircleExperience } from '@/components/circle-experience';
 
 import './index.css';
 
@@ -16,6 +17,7 @@ createRoot(document.getElementById('root')!, {
     <AuthProvider>
       <App />
       <DirectMessageHub />
+      <CircleExperience />
     </AuthProvider>
   </ErrorBoundary>,
 );
