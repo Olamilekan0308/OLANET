@@ -6,16 +6,15 @@
   "framework": "vite",
   "installCommand": "npm install --no-package-lock",
   "rewrites": [
-    { "source": "/api/people", "destination": "/api/index.js" },
+    { "source": "/api/people", "destination": "/api/people.js" },
     { "source": "/api/conversations", "destination": "/api/conversations.js" },
     { "source": "/api/conversations/:id/messages", "destination": "/api/conversations/:id/messages.js" },
     { "source": "/api/friends", "destination": "/api/social?route=friends" },
-    { "source": "/api/friends/request", "destination": "/api/social?route=request" },
+    { "source": "/api/friends/request", "destination": "/api/friends/request.js" },
     { "source": "/api/friends/status/:userId", "destination": "/api/social?route=status&userId=:userId" },
     { "source": "/api/friends/:id", "destination": "/api/social?route=update&id=:id" },
     { "source": "/api/groups/:id/join", "destination": "/api/social/join?groupId=:id" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/people", "destination": "/people.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
