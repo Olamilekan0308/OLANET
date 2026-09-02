@@ -5,10 +5,9 @@ html{scroll-behavior:auto!important}
 button,a{transition:background-color .15s ease,color .15s ease,border-color .15s ease,transform .12s ease}
 input,textarea,select{background:#fff!important;border-color:#d8e4e2!important;color:#1d4348!important}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #2f817d!important;outline-offset:2px}
-.bg-\\[\\#fffaf1\\]{background-color:#fff!important}.bg-\\[\\#f8f2e8\\]{background-color:#f4f7f6!important}.bg-\\[\\#f6eddf\\]{background-color:#f4f7f6!important}.bg-\\[\\#f1e4cc\\]{background-color:#e8f1ef!important}
-.text-\\[\\#1d4348\\]{color:#1d4348!important}.text-\\[\\#365b60\\]{color:#365b60!important}.text-\\[\\#527075\\]{color:#527075!important}
-.border-\\[\\#dfd2c0\\],.border-\\[\\#eadfce\\],.border-\\[\\#ddceba\\]{border-color:#d8e4e2!important}
-/* Compatibility for older social-hub blue actions while keeping the component source unchanged. */
-.bg-\\[\\#1877f2\\]{background-color:#2f817d!important}.hover\\:bg-\\[\\#166fe5\\]:hover{background-color:#266d69!important}.text-\\[\\#1877f2\\]{color:#2f817d!important}.bg-\\[\\#e7f3ff\\]{background-color:#e1f0ee!important}.text-\\[\\#1c1e21\\]{color:#1d4348!important}
+.bg-\[\#fffaf1\]{background-color:#fff!important}.bg-\[\#f8f2e8\]{background-color:#f4f7f6!important}.bg-\[\#f6eddf\]{background-color:#f4f7f6!important}.bg-\[\#f1e4cc\]{background-color:#e8f1ef!important}
+.text-\[\#1d4348\]{color:#1d4348!important}.text-\[\#365b60\]{color:#365b60!important}.text-\[\#527075\]{color:#527075!important}
+.border-\[\#dfd2c0\],.border-\[\#eadfce\],.border-\[\#ddceba\]{border-color:#d8e4e2!important}
+.bg-\[\#1877f2\]{background-color:#2f817d!important}.hover\:bg-\[\#166fe5\]:hover{background-color:#266d69!important}.text-\[\#1877f2\]{color:#2f817d!important}.bg-\[\#e7f3ff\]{background-color:#e1f0ee!important}.text-\[\#1c1e21\]{color:#1d4348!important}
 .page-enter{animation:none!important}
 [data-testid="button-log-out"]{display:none!important}
