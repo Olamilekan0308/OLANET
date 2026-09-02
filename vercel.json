@@ -6,6 +6,12 @@
   "framework": "vite",
   "installCommand": "npm install --no-package-lock",
   "rewrites": [
+    { "source": "/api/people", "destination": "/api/social?route=people" },
+    { "source": "/api/friends", "destination": "/api/social?route=friends" },
+    { "source": "/api/friends/request", "destination": "/api/social?route=request" },
+    { "source": "/api/friends/status/:userId", "destination": "/api/social?route=status&userId=:userId" },
+    { "source": "/api/friends/:id", "destination": "/api/social?route=update&id=:id" },
+    { "source": "/api/groups/:id/join", "destination": "/api/social/join?groupId=:id" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
