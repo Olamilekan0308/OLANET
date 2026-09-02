@@ -7,6 +7,7 @@ type Chat = { id: number; sender_id: string; body: string; created_at: string };
 type FriendState = { status: 'none' | 'pending' | 'accepted' | 'declined' | 'blocked'; incoming?: boolean; requestId?: string };
 
 const api = (path: string, init?: RequestInit) => fetch(`/api${path}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } }).then(async r => { const d = await r.json().catch(() => null); if (!r.ok) throw new Error(d?.error || 'Request failed'); return d; });
+const socialApi = (query: string, init?: RequestInit) => fetch(`/api/social?${query}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } }).then(async r => { const d = await r.json().catch(() => null); if (!r.ok) throw new Error(d?.error || 'Request failed'); return d; });
 
 export function DirectMessageHub() {
   const { user } = useAuth();
@@ -21,9 +22,9 @@ export function DirectMessageHub() {
   const [error, setError] = useState('');
   const [friendStates, setFriendStates] = useState<Record<string, FriendState>>({});
 
-  const loadPeople = async (q = '') => { try { setError(''); const result = await api(`/people${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`); setPeople(Array.isArray(result) ? result : []); } catch (e) { setError(e instanceof Error ? e.message : 'Could not find users.'); } };
+  const loadPeople = async (q = '') => { try { setError(''); const result = await socialApi(`route=people${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ''}`); setPeople(Array.isArray(result) ? result : []); } catch (e) { setError(e instanceof Error ? e.message : 'Could not find users.'); } };
   const loadMessages = async (id: number) => { try { setMessages(await api(`/conversations/${id}/messages`)); } catch (e) { setError(e instanceof Error ? e.message : 'Could not load messages.'); } };
-  const loadFriendStatus = async (person: Person) => { try { const s = await api(`/friends/status/${encodeURIComponent(person.id)}`); setFriendStates(v => ({ ...v, [person.id]: s })); } catch { setFriendStates(v => ({ ...v, [person.id]: { status: 'none' } })); } };
+  const loadFriendStatus = async (person: Person) => { try { const s = await socialApi(`route=status&userId=${encodeURIComponent(person.id)}`); setFriendStates(v => ({ ...v, [person.id]: s })); } catch { setFriendStates(v => ({ ...v, [person.id]: { status: 'none' } })); } };
 
   useEffect(() => { if (!user) return; if (open) void loadPeople(query); }, [open, user]);
   useEffect(() => { if (!user || !open) return; const t = window.setTimeout(() => void loadPeople(query), 250); return () => window.clearTimeout(t); }, [query, open, user]);
@@ -33,7 +34,7 @@ export function DirectMessageHub() {
   const sendFriendRequest = async (person: Person) => {
     if (busy) return;
     setBusy(true); setError('');
-    try { const s = await api('/friends/request', { method: 'POST', body: JSON.stringify({ addressee_id: person.id }) }); setFriendStates(v => ({ ...v, [person.id]: s })); }
+    try { const s = await socialApi('route=request', { method: 'POST', body: JSON.stringify({ addressee_id: person.id }) }); setFriendStates(v => ({ ...v, [person.id]: s })); }
     catch (e) { setError(e instanceof Error ? e.message : 'Friend request failed.'); }
     finally { setBusy(false); }
   };
