@@ -7,7 +7,7 @@ const circles: Record<string, string> = {
 };
 type Group = { id: number; name: string; description?: string | null };
 type Chat = { id: number; sender_id: string; body: string; created_at: string };
-const api = async (path: string, init?: RequestInit) => { const r = await fetch(`/api${path}`, { ...init, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } }); const data = await r.json().catch(() => null); if (!r.ok) throw new Error(data?.error || 'Request failed'); return data; };
+const api = async (path: string, init?: RequestInit) => { const r = await fetch(`/api${path}`, { ...init, credentials: 'include', headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...(init?.headers || {}) } }); const data = await r.json().catch(() => null); if (!r.ok) throw new Error(data?.error || 'Request failed'); return data; };
 
 export function CircleExperience() {
   const [path, setPath] = useState(() => window.location.pathname); const [ai, setAi] = useState(false); const [group, setGroup] = useState<Group | null>(null); const [joined, setJoined] = useState(false); const [chatOpen, setChatOpen] = useState(false); const [messages, setMessages] = useState<Chat[]>([]); const [text, setText] = useState(''); const [error, setError] = useState('');
