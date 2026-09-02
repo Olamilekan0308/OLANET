@@ -9,14 +9,15 @@ const api=(path:string,init?:RequestInit)=>fetch(`/api${path}`,{...init,credenti
 
 export function SocialHub(){
  const {user,logout,updateProfile,uploadAvatar}=useAuth();
- const [open,setOpen]=useState(false),[tab,setTab]=useState<'messages'|'people'|'groups'>('messages'),[people,setPeople]=useState<Person[]>([]),[groups,setGroups]=useState<Group[]>([]),[query,setQuery]=useState(''),[selected,setSelected]=useState<Person|null>(null),[group,setGroup]=useState<Group|null>(null),[conversation,setConversation]=useState<number|null>(null),[messages,setMessages]=useState<Chat[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[settings,setSettings]=useState(false),[name,setName]=useState(''),[bio,setBio]=useState(''),[password,setPassword]=useState(''),[notice,setNotice]=useState(''),[viewOnce,setViewOnce]=useState(false),[newGroup,setNewGroup]=useState('');
+ const [open,setOpen]=useState(false),[tab,setTab]=useState<'messages'|'people'|'groups'>('people'),[people,setPeople]=useState<Person[]>([]),[groups,setGroups]=useState<Group[]>([]),[query,setQuery]=useState(''),[selected,setSelected]=useState<Person|null>(null),[group,setGroup]=useState<Group|null>(null),[conversation,setConversation]=useState<number|null>(null),[messages,setMessages]=useState<Chat[]>([]),[text,setText]=useState(''),[busy,setBusy]=useState(false),[settings,setSettings]=useState(false),[name,setName]=useState(''),[bio,setBio]=useState(''),[password,setPassword]=useState(''),[notice,setNotice]=useState(''),[viewOnce,setViewOnce]=useState(false),[newGroup,setNewGroup]=useState('');
  const fileRef=useRef<HTMLInputElement>(null);
  const initials=useMemo(()=>{const n=user?.profile?.full_name||user?.email?.split('@')[0]||'OL';return n.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()},[user]);
- const loadPeople=async(q='')=>{try{setPeople(await api(`/people${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`))}catch(e){setNotice(e instanceof Error?e.message:'Could not search members')}};
+ const loadPeople=async(q='')=>{try{setNotice('');setPeople(await api(`/people${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`))}catch(e){setNotice(e instanceof Error?e.message:'Could not search members')}};
  const loadGroups=async(q='')=>{try{setGroups(await api(`/groups${q.trim()?`?q=${encodeURIComponent(q.trim())}`:''}`))}catch(e){setNotice(e instanceof Error?e.message:'Could not load groups')}};
  const loadMessages=async()=>{const p=group?`/groups/${group.id}/messages`:conversation?`/conversations/${conversation}/messages`:'';if(p)try{setMessages(await api(p))}catch{}};
- useEffect(()=>{if(open){void loadPeople();void loadGroups()}},[open]);
- useEffect(()=>{if(open&&tab==='people')void loadPeople(query);if(open&&tab==='groups')void loadGroups(query)},[tab]);
+ useEffect(()=>{if(open){void loadPeople(query);void loadGroups()}},[open]);
+ useEffect(()=>{if(!open)return;if(tab==='people')void loadPeople(query);if(tab==='groups')void loadGroups(query)},[tab]);
+ useEffect(()=>{if(!open||tab!=='people')return;const timer=window.setTimeout(()=>void loadPeople(query),300);return()=>window.clearTimeout(timer)},[query,open,tab]);
  useEffect(()=>{if(!open)return;const t=window.setInterval(()=>void loadMessages(),4000);return()=>window.clearInterval(t)},[open,group,conversation]);
  useEffect(()=>{if(settings){setName(user?.profile?.full_name||'');setBio(user?.profile?.bio||'')}},[settings,user]);
  async function startChat(p:Person){setBusy(true);setNotice('');try{const c=await api('/conversations',{method:'POST',body:JSON.stringify({user_ids:[p.id]})});setSelected(p);setGroup(null);setConversation(c.id);setMessages(await api(`/conversations/${c.id}/messages`));setTab('messages')}catch(e){setNotice(e instanceof Error?e.message:'Could not open chat')}finally{setBusy(false)}}
