@@ -1,8 +1,7 @@
-
-/* Strong Facebook-style structural overrides */
+/* OLANET Facebook-style shell */
 :root{--olanet-blue:#1877f2;--olanet-bg:#f0f2f5;--olanet-surface:#fff;--olanet-text:#1c1e21;--olanet-muted:#65676b;--olanet-border:#dddfe2;--olanet-hover:#e4e6eb}
-html,body,#root{background:var(--olanet-bg)!important;color:var(--olanet-text)}
-body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html,body,#root{min-height:100%;background:var(--olanet-bg)!important}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--olanet-text)}
 aside.fixed.inset-y-0.left-0{background:#fff!important;color:#050505!important;border-right:1px solid var(--olanet-border)!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
 aside.fixed.inset-y-0.left-0 .brand-mark{color:var(--olanet-blue)!important}
 aside.fixed.inset-y-0.left-0 nav a{color:#050505!important;border-radius:10px!important}
@@ -10,7 +9,7 @@ aside.fixed.inset-y-0.left-0 nav a:hover{background:var(--olanet-hover)!importan
 header.sticky.top-0{background:rgba(255,255,255,.96)!important;border-color:var(--olanet-border)!important;box-shadow:0 1px 2px rgba(0,0,0,.12)!important}
 header.sticky.top-0 .brand-mark{color:var(--olanet-blue)!important}
 header.sticky.top-0 a:hover,header.sticky.top-0 button:hover{background:var(--olanet-hover)!important}
-main{background:var(--olanet-bg)!important}
+main{background:var(--olanet-bg)!important;min-height:calc(100dvh - 64px)!important}
 main .lift{background:#fff!important;border-color:var(--olanet-border)!important;border-radius:8px!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
 article[data-testid^="card-post-"] button{border-radius:8px}
 button[aria-label*="AI" i],button[data-testid*="ai" i],[data-olanet-ai],[data-testid*="circle-ai" i]{display:none!important}
