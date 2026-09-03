@@ -15,6 +15,7 @@
     { "source": "/api/friends/:id", "destination": "/api/social?route=update&id=:id" },
     { "source": "/api/groups/:id/join", "destination": "/api/social/join?groupId=:id" },
     { "source": "/api/activity", "destination": "/api/activity.js" },
+    { "source": "/api/auth/session-token", "destination": "/api/auth/session-token.js" },
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
