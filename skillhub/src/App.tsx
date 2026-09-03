@@ -1,4 +1,5 @@
-import { AuthProvider, AuthScreen, useAuth } from '@/lib/auth';
+import { AuthProvider, useAuth } from '@/lib/auth';
+import { AuthScreen } from '@/components/auth-screen';
 import { OLANETSocial } from './OLANETSocial';
 
 function AppContent(){
