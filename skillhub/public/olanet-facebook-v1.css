@@ -2,16 +2,51 @@
 :root{--olanet-blue:#1877f2;--olanet-bg:#f0f2f5;--olanet-surface:#fff;--olanet-text:#1c1e21;--olanet-muted:#65676b;--olanet-border:#dddfe2;--olanet-hover:#e4e6eb}
 html,body,#root{min-height:100%;background:var(--olanet-bg)!important}
 body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--olanet-text)}
-aside.fixed.inset-y-0.left-0{background:#fff!important;color:#050505!important;border-right:1px solid var(--olanet-border)!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
-aside.fixed.inset-y-0.left-0 .brand-mark{color:var(--olanet-blue)!important}
-aside.fixed.inset-y-0.left-0 nav a{color:#050505!important;border-radius:10px!important}
-aside.fixed.inset-y-0.left-0 nav a:hover{background:var(--olanet-hover)!important}
-header.sticky.top-0{background:rgba(255,255,255,.96)!important;border-color:var(--olanet-border)!important;box-shadow:0 1px 2px rgba(0,0,0,.12)!important}
-header.sticky.top-0 .brand-mark{color:var(--olanet-blue)!important}
-header.sticky.top-0 a:hover,header.sticky.top-0 button:hover{background:var(--olanet-hover)!important}
-main{background:var(--olanet-bg)!important;min-height:calc(100dvh - 64px)!important}
-main .lift{background:#fff!important;border-color:var(--olanet-border)!important;border-radius:8px!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
-article[data-testid^="card-post-"] button{border-radius:8px}
+/* desktop shell */
+@media(min-width:1024px){
+  aside.fixed.inset-y-0.left-0{width:280px!important;background:#fff!important;color:#050505!important;border-right:1px solid var(--olanet-border)!important;box-shadow:none!important;padding:18px 14px!important}
+  aside.fixed.inset-y-0.left-0 .brand-mark{color:var(--olanet-blue)!important;font-size:30px!important}
+  aside.fixed.inset-y-0.left-0 nav a{color:#050505!important;border-radius:10px!important;padding:11px 12px!important}
+  aside.fixed.inset-y-0.left-0 nav a:hover{background:var(--olanet-hover)!important}
+  aside.fixed.inset-y-0.left-0 nav a[class*="bg-[#f7c968]"]{background:#e7f3ff!important;color:var(--olanet-blue)!important}
+  aside.fixed.inset-y-0.left-0>div.mt-auto{background:#f0f2f5!important;border:1px solid var(--olanet-border)!important;color:var(--olanet-text)!important}
+  aside.fixed.inset-y-0.left-0>div.mt-auto span,aside.fixed.inset-y-0.left-0>div.mt-auto p,aside.fixed.inset-y-0.left-0>div.mt-auto a{color:var(--olanet-text)!important}
+  header.sticky.top-0{height:64px!important;margin-left:280px!important;background:#fff!important;border-color:var(--olanet-border)!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important;padding-left:24px!important;padding-right:24px!important}
+  header.sticky.top-0 h1{color:var(--olanet-text)!important}
+  header.sticky.top-0>div:last-child>div{background:#f0f2f5!important;border:0!important;border-radius:20px!important;width:240px!important}
+  header.sticky.top-0>div:last-child>div button{color:var(--olanet-muted)!important}
+  header.sticky.top-0>div:last-child>div input{font-size:14px!important}
+  main{margin-left:280px!important;background:var(--olanet-bg)!important;min-height:calc(100dvh - 64px)!important}
+  main>div{max-width:1100px!important;padding-top:24px!important}
+}
+/* cards and typography */
+main .lift{background:#fff!important;border:1px solid var(--olanet-border)!important;border-radius:8px!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
+main article[data-testid^="card-post-"]{padding:16px!important}
+main article[data-testid^="card-post-"] p{color:var(--olanet-text)}
+main article[data-testid^="card-post-"] .soft-grid{background:#f0f2f5!important}
+main article[data-testid^="card-post-"] button{border-radius:8px}
+/* make the composer look like Facebook's post composer */
+main button[data-testid="button-create-post"]{background:#f0f2f5!important;color:var(--olanet-muted)!important;border-radius:20px!important;text-align:left!important}
+main .page-enter>section>div:first-child{background:#fff!important;color:var(--olanet-text)!important;border:1px solid var(--olanet-border)!important;border-radius:8px!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
+main .page-enter>section>div:first-child h2{color:var(--olanet-text)!important}
+main .page-enter>section>div:first-child p{color:var(--olanet-muted)!important}
+main .page-enter>section>div:first-child .text-\[\#f7c968\]{color:var(--olanet-blue)!important}
+/* buttons */
+button.bg-\[\#2f817d\],a.bg-\[\#2f817d\]{background:var(--olanet-blue)!important}
+/* hide the old AI/Snap UI */
 button[aria-label*="AI" i],button[data-testid*="ai" i],[data-olanet-ai],[data-testid*="circle-ai" i]{display:none!important}
-a[href="/snap-solve"],[data-testid*="snap-solve" i]{display:none!important}
-@media(max-width:1023px){header.sticky.top-0{height:60px!important}main{padding-bottom:80px!important}}
+a[href="/snap-solve"],a[data-testid*="snap-solve" i]{display:none!important}
+/* clean old dark-theme remnants */
+[class*="bg-[#1d4348]"],[class*="bg-[#23484d]"],[class*="bg-[#294e53]"]{ }
+/* mobile Facebook-style navigation */
+@media(max-width:1023px){
+  header.sticky.top-0{height:60px!important;background:#fff!important;border-color:var(--olanet-border)!important;box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
+  header.sticky.top-0 h1{color:var(--olanet-text)!important}
+  main{background:var(--olanet-bg)!important;padding-bottom:80px!important}
+  main>div{padding-top:12px!important}
+  main .lift{border-radius:8px!important}
+  main .page-enter>section>div:first-child{border-radius:8px!important}
+  nav.fixed.bottom-0{height:64px!important;background:#fff!important;border-color:var(--olanet-border)!important;box-shadow:0 -1px 3px rgba(0,0,0,.08)!important}
+  nav.fixed.bottom-0 a{color:var(--olanet-muted)!important}
+  nav.fixed.bottom-0 a[class*="text-[#2f817d]"]{color:var(--olanet-blue)!important}
+}
