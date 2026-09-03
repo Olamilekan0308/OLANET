@@ -1,33 +1,38 @@
 (() => {
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const ago = (value) => { const d = new Date(value); const sec = Math.max(0, Math.floor((Date.now()-d.getTime())/1000)); if(sec<60)return `${sec}s ago`; const m=Math.floor(sec/60); if(m<60)return `${m}m ago`; const h=Math.floor(m/60); if(h<24)return `${h}h ago`; return `${Math.floor(h/24)}d ago`; };
+  const ago = (value) => { const d = new Date(value); if (!Number.isFinite(d.getTime())) return 'just now'; const sec = Math.max(0, Math.floor((Date.now()-d.getTime())/1000)); if(sec<60)return `${sec}s ago`; const m=Math.floor(sec/60); if(m<60)return `${m}m ago`; const h=Math.floor(m/60); if(h<24)return `${h}h ago`; return `${Math.floor(h/24)}d ago`; };
   const initials = (name) => String(name || 'OL').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'OL';
-  const load = async () => {
-    if (location.pathname !== '/') return;
-    try {
-      const r = await fetch('/api/posts', { credentials:'include' });
-      if (!r.ok) return;
-      const posts = await r.json();
-      if (!Array.isArray(posts) || !posts.length) return;
-      const cards = document.querySelectorAll('article[data-testid^="card-post-"]');
-      if (!cards.length) return;
-      const holder = cards[0].parentElement;
-      if (!holder) return;
-      holder.innerHTML = posts.map(p => {
-        const author=p.author||{}; const name=author.full_name||author.username||'OLANET member';
-        return `<article data-testid="card-post-${esc(p.id)}" class="lift rounded-2xl border border-[#dfd2c0] bg-[#fffaf1] p-4 shadow-[0_6px_22px_rgba(28,64,69,.035)]">
-          <div class="flex items-start gap-3"><div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-[#e8c17a] flex items-center justify-center text-xs font-bold text-[#1d4348]">${esc(initials(name))}${author.avatar_url?`<img src="${esc(author.avatar_url)}" alt="" class="absolute h-9 w-9 rounded-full object-cover" onerror="this.remove()">`:''}</div><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><p class="text-sm font-extrabold text-[#1d4348]">${esc(name)}</p><p class="text-xs text-[#789093]">${esc(author.username?'@'+author.username:'OLANET member')} · ${esc(ago(p.created_at))}</p></div><button data-testid="button-post-menu-${esc(p.id)}" class="rounded-full p-1 text-[#789093]"><span>•••</span></button></div></div></div>
-          <p class="mt-4 text-[15px] leading-7 text-[#365b60]">${esc(p.content||'')}</p>
-          ${p.media_url ? (p.media_type==='video'?`<video controls class="mt-4 w-full rounded-xl" src="${esc(p.media_url)}"></video>`:`<img class="mt-4 max-h-[520px] w-full rounded-xl object-cover" src="${esc(p.media_url)}" alt="Post media" loading="lazy">`) : ''}
-          <div class="mt-3 flex items-center justify-between border-b border-[#eadfce] pb-3 text-xs text-[#789093]"><span>${p.likes||0} people found this useful</span><span>${p.comments||0} comments</span></div>
-          <div class="flex items-center gap-1 pt-2"><button data-testid="button-like-post-${esc(p.id)}" class="press flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-bold text-[#527075]">♥ Useful</button><button data-testid="button-comment-post-${esc(p.id)}" class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-bold text-[#527075]">💬 Discuss</button><button data-testid="button-share-post-${esc(p.id)}" class="rounded-lg p-2 text-[#527075]">↗</button></div>
-          <div class="mt-3 flex gap-2"><input data-testid="input-comment-${esc(p.id)}" placeholder="Add something useful…" class="min-w-0 flex-1 rounded-xl border border-[#dfd2c0] bg-[#f8f2e8] px-3 py-2 text-sm outline-none"><button data-testid="button-send-comment-${esc(p.id)}" class="rounded-xl bg-[#2f817d] p-2 text-white">➤</button></div>
-        </article>`;
-      }).join('');
-      window.dispatchEvent(new Event('olanet:feed-ready'));
-    } catch {}
+  const api = async (path, options={}) => { const r=await fetch(path,{credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})},...options}); const d=await r.json().catch(()=>null); if(!r.ok) throw new Error(d?.error||'Request failed'); return d; };
+  const renderComposer = (holder, profile) => {
+    if (holder.querySelector('[data-olanet-persistent-composer]')) return;
+    const name=profile?.full_name||profile?.username||'You';
+    const box=document.createElement('div'); box.setAttribute('data-olanet-persistent-composer','1'); box.className='lift mb-3 rounded-2xl border border-[#dddfe2] bg-white p-4 shadow-sm';
+    box.innerHTML=`<div class="flex items-center gap-3"><div class="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#e7f3ff] flex items-center justify-center text-sm font-extrabold text-[#1877f2]">${esc(initials(name))}</div><button type="button" data-olanet-open-composer class="flex-1 rounded-full bg-[#f0f2f5] px-4 py-3 text-left text-sm text-[#65676b] hover:bg-[#e4e6eb]">What's on your mind, ${esc(name.split(' ')[0])}?</button></div><div data-olanet-composer-panel hidden class="mt-3 border-t border-[#dddfe2] pt-3"><textarea data-olanet-composer-input rows="3" maxlength="5000" placeholder="Share something with OLANET…" class="w-full resize-none rounded-xl border border-[#dddfe2] bg-[#f8f9fa] p-3 text-sm outline-none focus:border-[#1877f2]"></textarea><div class="mt-2 flex justify-end gap-2"><button type="button" data-olanet-cancel class="rounded-lg px-4 py-2 text-sm font-bold text-[#65676b]">Cancel</button><button type="button" data-olanet-submit class="rounded-lg bg-[#1877f2] px-4 py-2 text-sm font-bold text-white disabled:opacity-50" disabled>Post</button></div></div>`;
+    box.addEventListener('click', async (event)=>{
+      const t=event.target instanceof Element?event.target:null; if(!t)return;
+      const open=t.closest('[data-olanet-open-composer]'); const panel=box.querySelector('[data-olanet-composer-panel]'); const input=box.querySelector('[data-olanet-composer-input]'); const submit=box.querySelector('[data-olanet-submit]');
+      if(open){panel.hidden=false;input.focus();return;}
+      if(t.closest('[data-olanet-cancel]')){panel.hidden=true;input.value='';submit.disabled=true;return;}
+      if(t.closest('[data-olanet-submit]')){const content=input.value.trim();if(!content)return;submit.disabled=true;try{await api('/api/posts',{method:'POST',body:JSON.stringify({content})});input.value='';panel.hidden=true;await load();}catch(e){toast(e.message);submit.disabled=false;}}
+    });
+    box.addEventListener('input',()=>{const input=box.querySelector('[data-olanet-composer-input]');const submit=box.querySelector('[data-olanet-submit]');submit.disabled=!input.value.trim();});
+    holder.prepend(box);
   };
-  const boot = () => setTimeout(load, 500);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  window.addEventListener('popstate', boot);
+  const toast = (message) => { let el=document.getElementById('olanet-feed-toast'); if(!el){el=document.createElement('div');el.id='olanet-feed-toast';Object.assign(el.style,{position:'fixed',left:'50%',bottom:'90px',zIndex:'100001',transform:'translateX(-50%)',background:'#1c1e21',color:'#fff',padding:'10px 14px',borderRadius:'10px',font:'600 13px system-ui',boxShadow:'0 6px 20px rgba(0,0,0,.2)',opacity:'0',transition:'opacity .2s'});document.body.appendChild(el);}el.textContent=message;el.style.opacity='1';clearTimeout(el._timer);el._timer=setTimeout(()=>el.style.opacity='0',2500);};
+  async function load(){
+    if(location.pathname!=='/') return;
+    try{
+      const [posts,session]=await Promise.all([api('/api/posts?limit=30'),api('/api/auth/session')]);
+      const cards=document.querySelectorAll('article[data-testid^="card-post-"]'); if(!cards.length)return;
+      const holder=cards[0].parentElement; if(!holder)return;
+      const list=Array.isArray(posts)?posts:[];
+      holder.innerHTML='';
+      renderComposer(holder,session?.user?.profile||{});
+      if(!list.length){const empty=document.createElement('div');empty.className='lift rounded-2xl border border-[#dddfe2] bg-white p-8 text-center text-sm text-[#65676b]';empty.textContent='No posts yet. Be the first person to share something useful.';holder.appendChild(empty);return;}
+      const frag=document.createDocumentFragment();
+      list.forEach(p=>{const author=p.author||{};const name=author.full_name||author.username||'OLANET member';const article=document.createElement('article');article.setAttribute('data-testid',`card-post-${p.id}`);article.className='lift rounded-2xl border border-[#dddfe2] bg-white p-4 shadow-sm';article.innerHTML=`<div class="flex items-start gap-3"><div class="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e7f3ff] text-xs font-extrabold text-[#1877f2]">${esc(initials(name))}${author.avatar_url?`<img src="${esc(author.avatar_url)}" alt="" class="absolute inset-0 h-full w-full object-cover" onerror="this.remove()">`:''}</div><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><div><p class="text-sm font-extrabold text-[#1c1e21]">${esc(name)}</p><p class="text-xs text-[#65676b]">${esc(author.username?'@'+author.username:'OLANET member')} · ${esc(ago(p.created_at))}</p></div><button data-testid="button-post-menu-${esc(p.id)}" class="rounded-full p-1 text-[#65676b]">•••</button></div></div></div><p class="mt-4 whitespace-pre-wrap text-[15px] leading-7 text-[#1c1e21]">${esc(p.content||'')}</p>${p.media_url?(p.media_type==='video'?`<video controls class="mt-4 w-full rounded-xl" src="${esc(p.media_url)}"></video>`:`<img class="mt-4 max-h-[520px] w-full rounded-xl object-cover" src="${esc(p.media_url)}" alt="Post media" loading="lazy">`):''}<div class="mt-3 flex items-center justify-between border-b border-[#dddfe2] pb-3 text-xs text-[#65676b]"><span>${Number(p.likes)||0} likes</span><span>${Number(p.comments)||0} comments · ${Number(p.shares)||0} shares</span></div><div class="flex items-center gap-1 pt-2"><button data-testid="button-like-post-${esc(p.id)}" class="press flex flex-1 items-center justify-center rounded-lg py-2 text-sm font-bold ${p.liked?'text-[#1877f2]':'text-[#65676b]'}">👍 Like</button><button data-testid="button-comment-post-${esc(p.id)}" class="flex flex-1 items-center justify-center rounded-lg py-2 text-sm font-bold text-[#65676b]">💬 Comment</button><button data-testid="button-share-post-${esc(p.id)}" class="flex flex-1 items-center justify-center rounded-lg py-2 text-sm font-bold text-[#65676b]">↗ Share</button></div><div class="mt-3 flex gap-2"><input data-testid="input-comment-${esc(p.id)}" placeholder="Write a comment…" class="min-w-0 flex-1 rounded-full border border-[#dddfe2] bg-[#f0f2f5] px-4 py-2 text-sm outline-none"><button data-testid="button-send-comment-${esc(p.id)}" class="rounded-full bg-[#1877f2] px-4 py-2 text-sm font-bold text-white">Send</button></div>`;frag.appendChild(article);});
+      holder.appendChild(frag); window.dispatchEvent(new Event('olanet:feed-ready'));
+    }catch(e){/* Authenticated Home can render its local shell while the API is unavailable. */}
+  }
+  const boot=()=>setTimeout(load,700); if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot(); window.addEventListener('popstate',boot);
 })();
