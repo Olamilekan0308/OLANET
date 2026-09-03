@@ -1,19 +1,28 @@
-/* OLANET V1 social shell: familiar Facebook-like structure without copying proprietary assets. */
+/* OLANET Facebook-style social shell. Familiar social patterns, original OLANET branding. */
 :root{--olanet-blue:#1877f2;--olanet-bg:#f0f2f5;--olanet-surface:#fff;--olanet-text:#1c1e21;--olanet-muted:#65676b;--olanet-border:#dddfe2;--olanet-hover:#e4e6eb}
 html,body,#root{min-height:100%;background:var(--olanet-bg)}
 body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--olanet-text)}
-/* Normalize the older warm palette into the new social palette. */
-.bg-\\[\\#fffaf1\\],.bg-\\[\\#f8f2e8\\],.bg-\\[\\#eef4f2\\]{background:var(--olanet-surface)!important}
-.text-\\[\\#1d4348\\],.text-\\[\\#173f40\\],.text-\\[\\#244a4b\\]{color:var(--olanet-text)!important}
-.text-\\[\\#527075\\],.text-\\[\\#718182\\],.text-\\[\\#789093\\],.text-\\[\\#70878a\\]{color:var(--olanet-muted)!important}
+/* Normalize the original warm palette into the social palette. */
+.bg-\\[\\#fffaf1\\],.bg-\\[\\#f8f2e8\\],.bg-\\[\\#eef4f2\\],.bg-\\[\\#fff\\]{background:var(--olanet-surface)!important}
+.text-\\[\\#1d4348\\],.text-\\[\\#173f40\\],.text-\\[\\#244a4b\\],.text-\\[\\#365b60\\]{color:var(--olanet-text)!important}
+.text-\\[\\#527075\\],.text-\\[\\#718182\\],.text-\\[\\#789093\\],.text-\\[\\#70878a\\],.text-\\[\\#9db8b2\\]{color:var(--olanet-muted)!important}
 .border-\\[\\#dfd2c0\\],.border-\\[\\#dbe6e3\\],.border-\\[\\#eadfce\\]{border-color:var(--olanet-border)!important}
 .bg-\\[\\#2f817d\\]{background:var(--olanet-blue)!important}
 .text-\\[\\#2f817d\\],.text-\\[\\#216763\\],.text-\\[\\#285354\\]{color:var(--olanet-blue)!important}
-.hover\\:bg-\\[\\#286f6c\\]:hover,.hover\\:bg-\\[\\#276d69\\]:hover{background:#166fe5!important}
-/* Hide V2 AI controls while preserving their source code for the V2 release. */
-button[aria-label*="AI" i],button[data-testid*="ai" i],[data-olanet-ai],[data-testid*="circle-ai" i]{display:none!important}
-/* Hide the old V2 entry and workshop/splash controls from the V1 shell. */
-a[href="/snap-solve"],[data-testid*="snap-solve" i],[data-testid*="workshop" i],[aria-label*="workshop" i]{display:none!important}
-/* Give app surfaces the flatter social-card treatment. */
+.hover\\:bg-\\[\\#276d69\\]:hover,.hover\\:bg-\\[\\#286f6c\\]:hover{background:#166fe5!important}
+/* Main OLANET navigation becomes a Facebook-like light social rail. */
+aside.fixed.inset-y-0.left-0{background:#fff!important;color:var(--olanet-text)!important;border-right:1px solid var(--olanet-border)}
+aside.fixed.inset-y-0.left-0 .text-\\[\\#b9d0cc\\],aside.fixed.inset-y-0.left-0 .text-\\[\\#87aaa7\\]{color:var(--olanet-muted)!important}
+aside.fixed.inset-y-0.left-0 a:hover{background:var(--olanet-hover)!important}
+aside.fixed.inset-y-0.left-0 a[class*="bg-\\[\\#f7c968\\]"]{background:#e7f3ff!important;color:var(--olanet-blue)!important}
+header.sticky.top-0{background:rgba(255,255,255,.96)!important;border-color:var(--olanet-border)!important}
+main{background:var(--olanet-bg)!important}
+/* Social cards: white, flat, familiar spacing. */
 .lift,.sheet-card,.card,.rounded-2xl.border{box-shadow:0 1px 2px rgba(0,0,0,.08)!important}
+.lift{border-color:var(--olanet-border)!important}
+/* Facebook-style reaction/action rows. */
+article[data-testid^="card-post-"] button{border-radius:8px}
+/* Hide obsolete AI entry points from the social shell. */
+button[aria-label*="AI" i],button[data-testid*="ai" i],[data-olanet-ai],[data-testid*="circle-ai" i]{display:none!important}
+a[href="/snap-solve"],[data-testid*="snap-solve" i],[data-testid*="workshop" i],[aria-label*="workshop" i]{display:none!important}
 button{transition:background-color .12s ease,color .12s ease,opacity .12s ease}
