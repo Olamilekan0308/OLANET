@@ -1,6 +1,8 @@
 name: Wire real Messenger UI
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
