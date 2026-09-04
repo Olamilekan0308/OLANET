@@ -16,7 +16,11 @@ jobs:
         with:
           node-version: 20
       - name: Apply Messenger wiring
-        run: node scripts/wire-real-messages.mjs
+        run: |
+          # The generated JSX is inside a JS template literal. Escape interpolation
+          # markers before executing the one-time source transformation.
+          perl -0pi -e 's/\$\{/\\\$\{/g' scripts/wire-real-messages.mjs
+          node scripts/wire-real-messages.mjs
       - name: Commit change
         run: |
           if git diff --quiet -- skillhub/src/App.tsx; then
