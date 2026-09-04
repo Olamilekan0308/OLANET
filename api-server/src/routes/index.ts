@@ -1,4 +1,4 @@
-import { type IRouter } from "express";
+import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import olanetAIRouter from "./olanet-ai-v2";
