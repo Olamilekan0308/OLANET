@@ -1,7 +1,8 @@
 name: Wire real Messenger UI
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
@@ -24,6 +25,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add skillhub/src/App.tsx scripts/wire-real-messages.mjs .github/workflows/wire-real-messages.yml
+          git add skillhub/src/App.tsx
           git commit -m "feat: connect Messenger UI to real API"
           git push
