@@ -1,8 +1,7 @@
 name: Wire real Messenger UI
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,17 +13,33 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Apply Messenger wiring
+          node-version: 24
+      - name: Apply Messenger wiring safely
         run: |
-          # The generated JSX is inside a JS template literal. Escape interpolation
-          # markers before executing the one-time source transformation.
-          perl -0pi -e 's/\$\{/\\\$\{/g' scripts/wire-real-messages.mjs
-          node scripts/wire-real-messages.mjs
-      - name: Commit change
+          python3 - <<'PY'
+          from pathlib import Path
+          script = Path('scripts/wire-real-messages.mjs').read_text()
+          marker = 'const replacement = String.raw`'
+          start = script.index(marker) + len(marker)
+          end = script.rindex('`;')
+          replacement = script[start:end]
+          app_path = Path('skillhub/src/App.tsx')
+          source = app_path.read_text()
+          function_start = source.index('function MessagesPage() {')
+          next_function = source.find('\nfunction ', function_start + len('function MessagesPage() {'))
+          if next_function < 0:
+              raise RuntimeError('Next top-level function after MessagesPage not found')
+          current = source[function_start:next_function]
+          if "fetch('/api/messages/conversations'" in current:
+              print('Messenger UI is already wired; no change needed.')
+          else:
+              app_path.write_text(source[:function_start] + replacement + source[next_function:])
+              print('Messenger UI wired directly into App.tsx')
+          PY
+      - name: Commit Messenger UI
         run: |
           if git diff --quiet -- skillhub/src/App.tsx; then
-            echo "Messenger UI already wired."
+            echo "No Messenger UI changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
