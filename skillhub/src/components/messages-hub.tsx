@@ -1,100 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, MessageCircle, Search, Send, UserRound } from 'lucide-react';
-
 type OtherUser = { id?: string; full_name?: string | null; username?: string | null; avatar_url?: string | null };
-type Conversation = { id: number; conversation_id?: number; other_user?: OtherUser | null; created_at?: string };
-type Message = { id: number; body?: string | null; sender_id: string; created_at?: string; media_url?: string | null; media_type?: string | null };
-
-const blue = '#1877f2';
-const bg = '#f0f2f5';
-
-function Avatar({ user, size = 42 }: { user?: OtherUser | null; size?: number }) {
-  const name = user?.full_name || user?.username || 'User';
-  if (user?.avatar_url) return <img src={user.avatar_url} alt={name} style={{ width: size, height: size }} className="rounded-full object-cover" />;
-  return <div style={{ width: size, height: size, background: '#e4e6eb' }} className="rounded-full flex items-center justify-center text-gray-600 font-semibold"><UserRound size={size * .5} /></div>;
-}
-
-export default function MessagesHub() {
-  const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selected, setSelected] = useState<number | null>(Number(params.get('conversation')) || null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [text, setText] = useState('');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
-
-  const loadConversations = async () => {
-    const r = await fetch('/api/messages/conversations');
-    if (!r.ok) throw new Error('Could not load conversations');
-    const data = await r.json();
-    setConversations(Array.isArray(data) ? data : []);
-    if (!selected && Array.isArray(data) && data[0]) setSelected(Number(data[0].id ?? data[0].conversation_id));
-  };
-
-  const loadMessages = async (id: number) => {
-    const r = await fetch(`/api/messages/conversations/${id}/messages`);
-    if (!r.ok) throw new Error('Could not load messages');
-    const data = await r.json();
-    setMessages(Array.isArray(data) ? data : []);
-  };
-
-  useEffect(() => { loadConversations().catch(e => setError(e.message)).finally(() => setLoading(false)); }, []);
-  useEffect(() => { if (selected) loadMessages(selected).catch(e => setError(e.message)); }, [selected]);
-
-  const visible = conversations.filter(c => {
-    const u = c.other_user;
-    const q = search.trim().toLowerCase();
-    return !q || `${u?.full_name || ''} ${u?.username || ''}`.toLowerCase().includes(q);
-  });
-  const active = conversations.find(c => Number(c.id ?? c.conversation_id) === selected);
-  const activeUser = active?.other_user;
-
-  const choose = (id: number) => {
-    setSelected(id);
-    window.history.replaceState({}, '', `/messages?conversation=${id}`);
-  };
-
-  const send = async () => {
-    if (!selected || !text.trim() || sending) return;
-    setSending(true); setError('');
-    try {
-      const r = await fetch(`/api/messages/conversations/${selected}/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body: text.trim() }) });
-      const data = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(data?.error || 'Message failed');
-      setText(''); await loadMessages(selected); await loadConversations();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Message failed'); }
-    finally { setSending(false); }
-  };
-
-  return <div className="min-h-screen" style={{ background: bg }}>
-    <header className="h-16 bg-white border-b flex items-center px-4 sticky top-0 z-20">
-      <a href="/" className="text-2xl font-bold" style={{ color: blue }}>OLANET</a>
-      <div className="ml-auto flex items-center gap-2 text-gray-600"><MessageCircle size={21} /><span className="font-semibold hidden sm:inline">Messenger</span></div>
-    </header>
-    <main className="max-w-6xl mx-auto p-3 md:p-5">
-      {error && <div className="mb-3 rounded-lg bg-red-50 text-red-700 px-4 py-3 text-sm">{error}</div>}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden flex" style={{ height: 'calc(100vh - 105px)', minHeight: 520 }}>
-        <aside className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r flex-col`}>
-          <div className="p-4 border-b"><h1 className="text-2xl font-bold text-gray-900 mb-3">Chats</h1><div className="relative"><Search size={18} className="absolute left-3 top-2.5 text-gray-500"/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Messenger" className="w-full rounded-full pl-10 pr-4 py-2.5 outline-none" style={{ background: bg }} /></div></div>
-          <div className="overflow-y-auto flex-1">
-            {loading && <p className="p-5 text-gray-500">Loading chats...</p>}
-            {!loading && !visible.length && <div className="p-8 text-center text-gray-500"><MessageCircle className="mx-auto mb-3" size={38}/><p>No conversations yet.</p><a href="/people" className="text-sm font-semibold mt-2 inline-block" style={{ color: blue }}>Find people to message</a></div>}
-            {visible.map(c => { const id = Number(c.id ?? c.conversation_id); const u = c.other_user; return <button key={id} onClick={() => choose(id)} className={`w-full text-left p-3 flex items-center gap-3 hover:bg-gray-100 ${selected === id ? 'bg-blue-50' : ''}`}><Avatar user={u}/><div className="min-w-0"><div className="font-semibold text-gray-900 truncate">{u?.full_name || u?.username || 'OLANET user'}</div><div className="text-sm text-gray-500 truncate">@{u?.username || 'user'}</div></div></button>; })}
-          </div>
-        </aside>
-        <section className={`${selected ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0`}>
-          {!selected ? <div className="m-auto text-center text-gray-500"><MessageCircle size={58} className="mx-auto mb-3"/><h2 className="text-xl font-semibold text-gray-800">Your messages</h2><p>Choose a conversation to start chatting.</p></div> : <>
-            <div className="h-16 border-b flex items-center gap-3 px-4"><button className="md:hidden p-2" onClick={() => setSelected(null)}><ArrowLeft size={20}/></button><Avatar user={activeUser}/><div><div className="font-bold text-gray-900">{activeUser?.full_name || activeUser?.username || 'OLANET user'}</div><div className="text-xs text-gray-500">@{activeUser?.username || 'user'}</div></div></div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {!messages.length && <div className="h-full flex items-center justify-center text-gray-400">No messages yet. Start the conversation.</div>}
-              {messages.map(m => <div key={m.id} className={`flex ${m.sender_id === 'me' ? 'justify-end' : 'justify-start'}`}><div className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm" style={{ background: m.sender_id === 'me' ? blue : '#e4e6eb', color: m.sender_id === 'me' ? 'white' : '#111827' }}>{m.body || (m.media_url ? 'Media' : '')}<div className={`text-[10px] mt-1 ${m.sender_id === 'me' ? 'text-blue-100' : 'text-gray-500'}`}>{m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</div></div></div>)}
-            </div>
-            <div className="p-3 border-t flex gap-2"><input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(); }} placeholder="Type a message..." className="flex-1 rounded-full px-4 py-3 outline-none" style={{ background: bg }} /><button disabled={!text.trim() || sending} onClick={send} className="w-11 h-11 rounded-full flex items-center justify-center text-white disabled:opacity-50" style={{ background: blue }}><Send size={19}/></button></div>
-          </>}
-        </section>
-      </div>
-    </main>
-  </div>;
+type Conversation = { id: number; conversation_id?: number; current_user_id?: string; other_user?: OtherUser | null };
+type Message = { id: number; body?: string | null; sender_id: string; created_at?: string; media_url?: string | null };
+const blue = '#1877f2'; const bg = '#f0f2f5';
+function Avatar({ user, size = 42 }: { user?: OtherUser | null; size?: number }) { const name=user?.full_name||user?.username||'User'; if(user?.avatar_url)return <img src={user.avatar_url} alt={name} style={{width:size,height:size}} className="rounded-full object-cover"/>; return <div style={{width:size,height:size,background:'#e4e6eb'}} className="rounded-full flex items-center justify-center text-gray-600"><UserRound size={size*.5}/></div>; }
+export default function MessagesHub(){ const params=useMemo(()=>new URLSearchParams(window.location.search),[]); const [conversations,setConversations]=useState<Conversation[]>([]); const [selected,setSelected]=useState<number|null>(Number(params.get('conversation'))||null); const [messages,setMessages]=useState<Message[]>([]); const [text,setText]=useState(''); const [search,setSearch]=useState(''); const [loading,setLoading]=useState(true); const [sending,setSending]=useState(false); const [error,setError]=useState('');
+const loadConversations=async()=>{const r=await fetch('/api/messages/conversations');if(!r.ok)throw new Error('Could not load conversations');const data=await r.json();setConversations(Array.isArray(data)?data:[]);if(!selected&&Array.isArray(data)&&data[0])setSelected(Number(data[0].id??data[0].conversation_id));};
+const loadMessages=async(id:number)=>{const r=await fetch(`/api/messages/conversations/${id}/messages`);if(!r.ok)throw new Error('Could not load messages');const data=await r.json();setMessages(Array.isArray(data)?data:[]);};
+useEffect(()=>{loadConversations().catch(e=>setError(e.message)).finally(()=>setLoading(false));},[]); useEffect(()=>{if(selected)loadMessages(selected).catch(e=>setError(e.message));},[selected]);
+const visible=conversations.filter(c=>{const u=c.other_user;const q=search.trim().toLowerCase();return !q||`${u?.full_name||''} ${u?.username||''}`.toLowerCase().includes(q);}); const active=conversations.find(c=>Number(c.id??c.conversation_id)===selected); const activeUser=active?.other_user; const currentUserId=active?.current_user_id;
+const choose=(id:number)=>{setSelected(id);window.history.replaceState({},'',`/messages?conversation=${id}`);};
+const send=async()=>{if(!selected||!text.trim()||sending)return;setSending(true);setError('');try{const r=await fetch(`/api/messages/conversations/${selected}/messages`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:text.trim()})});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Message failed');setText('');await loadMessages(selected);}catch(e){setError(e instanceof Error?e.message:'Message failed')}finally{setSending(false)}};
+return <div className="min-h-screen" style={{background:bg}}><header className="h-16 bg-white border-b flex items-center px-4 sticky top-0 z-20"><a href="/" className="text-2xl font-bold" style={{color:blue}}>OLANET</a><div className="ml-auto flex items-center gap-2 text-gray-600"><MessageCircle size={21}/><span className="font-semibold hidden sm:inline">Messenger</span></div></header><main className="max-w-6xl mx-auto p-3 md:p-5">{error&&<div className="mb-3 rounded-lg bg-red-50 text-red-700 px-4 py-3 text-sm">{error}</div>}<div className="bg-white rounded-xl border shadow-sm overflow-hidden flex" style={{height:'calc(100vh - 105px)',minHeight:520}}><aside className={`${selected?'hidden md:flex':'flex'} w-full md:w-80 border-r flex-col`}><div className="p-4 border-b"><h1 className="text-2xl font-bold text-gray-900 mb-3">Chats</h1><div className="relative"><Search size={18} className="absolute left-3 top-2.5 text-gray-500"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Messenger" className="w-full rounded-full pl-10 pr-4 py-2.5 outline-none" style={{background:bg}}/></div></div><div className="overflow-y-auto flex-1">{loading&&<p className="p-5 text-gray-500">Loading chats...</p>}{!loading&&!visible.length&&<div className="p-8 text-center text-gray-500"><MessageCircle className="mx-auto mb-3" size={38}/><p>No conversations yet.</p><a href="/people" className="text-sm font-semibold mt-2 inline-block" style={{color:blue}}>Find people to message</a></div>}{visible.map(c=>{const id=Number(c.id??c.conversation_id);return <button key={id} onClick={()=>choose(id)} className={`w-full text-left p-3 flex items-center gap-3 hover:bg-gray-100 ${selected===id?'bg-blue-50':''}`}><Avatar user={c.other_user}/><div className="min-w-0"><div className="font-semibold text-gray-900 truncate">{c.other_user?.full_name||c.other_user?.username||'OLANET user'}</div><div className="text-sm text-gray-500 truncate">@{c.other_user?.username||'user'}</div></div></button>})}</div></aside><section className={`${selected?'flex':'hidden md:flex'} flex-1 flex-col min-w-0`}>{!selected?<div className="m-auto text-center text-gray-500"><MessageCircle size={58} className="mx-auto mb-3"/><h2 className="text-xl font-semibold text-gray-800">Your messages</h2><p>Choose a conversation to start chatting.</p></div>:<><div className="h-16 border-b flex items-center gap-3 px-4"><button className="md:hidden p-2" onClick={()=>setSelected(null)}><ArrowLeft size={20}/></button><Avatar user={activeUser}/><div><div className="font-bold text-gray-900">{activeUser?.full_name||activeUser?.username||'OLANET user'}</div><div className="text-xs text-gray-500">@{activeUser?.username||'user'}</div></div></div><div className="flex-1 overflow-y-auto p-4 space-y-2">{!messages.length&&<div className="h-full flex items-center justify-center text-gray-400">No messages yet. Start the conversation.</div>}{messages.map(m=>{const mine=Boolean(currentUserId&&m.sender_id===currentUserId);return <div key={m.id} className={`flex ${mine?'justify-end':'justify-start'}`}><div className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm" style={{background:mine?blue:'#e4e6eb',color:mine?'white':'#111827'}}>{m.body||(m.media_url?'Media':'')}<div className={`text-[10px] mt-1 ${mine?'text-blue-100':'text-gray-500'}`}>{m.created_at?new Date(m.created_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}</div></div></div>})}</div><div className="p-3 border-t flex gap-2"><input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')send()}} placeholder="Type a message..." className="flex-1 rounded-full px-4 py-3 outline-none" style={{background:bg}}/><button disabled={!text.trim()||sending} onClick={send} className="w-11 h-11 rounded-full flex items-center justify-center text-white disabled:opacity-50" style={{background:blue}}><Send size={19}/></button></div></>}</section></div></main></div>;
 }
