@@ -28,7 +28,10 @@ app.use(
     },
   }),
 );
-app.use(cors());
+
+// OLANET serves its API and frontend from the same origin. Do not emit a
+// permissive cross-origin policy for credentialed endpoints.
+app.use(cors({ origin: false }));
 app.use(cookieParser(process.env.SESSION_SECRET));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
