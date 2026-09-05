@@ -36,7 +36,8 @@ router.get("/feed", async (req,res):Promise<void=>{
 router.post("/feed", async(req,res):Promise<void=>{
  const a=await auth(req,res);if(!a)return;
  const content=typeof req.body?.content==="string"?req.body.content.trim():"";
- const mediaUrl=typeof req.body?.media_url==="string"?req.body.media_url.trim():"";
+ const mediaUrlRaw=typeof req.body?.media_url==="string"?req.body.media_url:typeof req.body?.image_url==="string"?req.body.image_url:"";
+ const mediaUrl=mediaUrlRaw.trim();
  if(!content&&!mediaUrl){res.status(400).json({error:"Post content or an image is required."});return;}
  if(content.length>5000){res.status(400).json({error:"Post is too long."});return;}
  if(mediaUrl && mediaUrl.length>2200000){res.status(413).json({error:"Image is too large. Please choose a smaller image."});return;}
