@@ -5,6 +5,8 @@ import PeopleHub from '@/components/people-hub';
 import SettingsHub from '@/components/settings-hub';
 import ProfileHub from '@/components/profile-hub';
 import MessagesHub from '@/components/messages-hub';
+import HomeHub from '@/components/home-hub';
+import { AuthProvider } from '@/lib/auth';
 import { ErrorBoundary } from '@/components/error-boundary';
 import './index.css';
 
@@ -15,6 +17,7 @@ function RootApp() {
   if (path === '/settings' || path === '/settings/account') return <SettingsHub />;
   if (path === '/profile') return <ProfileHub />;
   if (path === '/messages') return <MessagesHub />;
+  if (path === '/') return <AuthProvider><HomeHub /></AuthProvider>;
   return <App />;
 }
 
