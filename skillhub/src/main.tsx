@@ -10,7 +10,7 @@ import './index.css';
 function RootApp() {
   const path = window.location.pathname;
   if (path === '/circles' || /^\/circles\/\d+$/.test(path)) return <DepartmentHub />;
-  if (path === '/people' || path === '/friends') return <PeopleHub />;
+  if (path === '/people' || path === '/friends' || path === '/search') return <PeopleHub />;
   return <App />;
 }
 
