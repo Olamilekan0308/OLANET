@@ -1,0 +1,45 @@
+(()=>{
+const departments=[
+ ['electrical','Electrical Engineering','⚡',['Ohm’s Law','Electrical Power','Voltage Drop','Wire Size','Lighting Load','Energy Consumption']],
+ ['civil','Civil Engineering','🏗️',['Concrete Volume','Rebar Estimate','Area Calculator']],
+ ['mechanical','Mechanical Engineering','⚙️',['Torque','Motor Power','RPM Converter']],
+ ['computer-science','Computer Science','💻',['Binary Converter','Storage Converter']],
+ ['phone-repair','Phone Repair','📱',['Battery Runtime','Resistor Code']],
+ ['fashion','Fashion','👗',['Fabric Estimate']],
+ ['carpentry','Carpentry','🪚',['Board Feet','Area Calculator']],
+ ['agriculture','Agriculture','🌱',['Plant Spacing','Yield Estimate']],
+ ['catering','Catering','🍲',['Portion Calculator','Food Cost']]
+];
+const calc={
+ 'Ohm’s Law':[['Voltage (V)','v'],['Resistance (Ω)','r']],
+ 'Electrical Power':[['Voltage (V)','v'],['Current (A)','i']],
+ 'Voltage Drop':[['Current (A)','i'],['Resistance (Ω)','r']],
+ 'Wire Size':[['Current (A)','i'],['Length (m)','l'],['Voltage (V)','v'],['Allowed drop (%)','d']],
+ 'Lighting Load':[['Fixtures','f'],['Watts per fixture','w']],
+ 'Energy Consumption':[['Power (W)','p'],['Hours used','h']],
+ 'Concrete Volume':[['Length (m)','l'],['Width (m)','w'],['Depth (m)','d']],
+ 'Rebar Estimate':[['Slab length (m)','l'],['Slab width (m)','w'],['Bar spacing (m)','s'],['Bar weight (kg/m)','k']],
+ 'Area Calculator':[['Length','l'],['Width','w']],
+ 'Torque':[['Force (N)','f'],['Distance (m)','d']],
+ 'Motor Power':[['Torque (N·m)','t'],['RPM','r']],
+ 'RPM Converter':[['RPM','r']],
+ 'Binary Converter':[['Decimal number','d']],
+ 'Storage Converter':[['Gigabytes (GB)','g']],
+ 'Battery Runtime':[['Battery capacity (Ah)','c'],['Battery voltage (V)','v'],['Load (W)','l'],['Efficiency (%)','e']],
+ 'Resistor Code':[['Band 1 digit (0-9)','a'],['Band 2 digit (0-9)','b'],['Multiplier power (10^n)','m']],
+ 'Board Feet':[['Thickness (in)','t'],['Width (in)','w'],['Length (ft)','l']],
+ 'Fabric Estimate':[['Pieces','p'],['Yards per piece','y']],
+ 'Plant Spacing':[['Bed length (m)','l'],['Spacing (m)','s']],
+ 'Yield Estimate':[['Farm area','a'],['Yield per area','y']],
+ 'Portion Calculator':[['People','p'],['Portion per person','q']],
+ 'Food Cost':[['Quantity','q'],['Cost per unit','c']]
+};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const formula=(name,v)=>{switch(name){case 'Ohm’s Law':return ['Current',v.v/v.r,'A'];case 'Electrical Power':return ['Power',v.v*v.i,'W'];case 'Voltage Drop':return ['Voltage drop',v.i*v.r,'V'];case 'Wire Size':return ['Approx. copper area',(2*v.i*v.l*0.0175)/(v.v*(v.d/100)),'mm²'];case 'Lighting Load':return ['Lighting load',v.f*v.w,'W'];case 'Energy Consumption':return ['Energy',v.p*v.h/1000,'kWh'];case 'Concrete Volume':return ['Concrete volume',v.l*v.w*v.d,'m³'];case 'Rebar Estimate':return ['Approx. rebar',((Math.ceil(v.w/v.s)+1)*v.l+(Math.ceil(v.l/v.s)+1)*v.w)*v.k,'kg'];case 'Area Calculator':return ['Area',v.l*v.w,'units²'];case 'Torque':return ['Torque',v.f*v.d,'N·m'];case 'Motor Power':return ['Power',v.t*2*Math.PI*v.r/60,'W'];case 'RPM Converter':return ['Angular speed',v.r*2*Math.PI/60,'rad/s'];case 'Binary Converter':return ['Binary',parseInt(v.d,10).toString(2),''];case 'Storage Converter':return ['Megabytes',v.g*1024,'MB'];case 'Battery Runtime':return ['Approx. runtime',(v.c*v.v*(v.e/100))/v.l,'hours'];case 'Resistor Code':return ['Resistance',(v.a*10+v.b)*Math.pow(10,v.m),'Ω'];case 'Board Feet':return ['Board feet',v.t*v.w*v.l/12,'board ft'];case 'Fabric Estimate':return ['Fabric needed',v.p*v.y,'yards'];case 'Plant Spacing':return ['Plants along length',v.l/v.s,'plants'];case 'Yield Estimate':return ['Estimated yield',v.a*v.y,'units'];case 'Portion Calculator':return ['Total portions',v.p*v.q,'portions'];case 'Food Cost':return ['Food cost',v.q*v.c,'currency'];default:return null}};
+function css(){if(document.getElementById('olanet-fb-css'))return;const s=document.createElement('style');s.id='olanet-fb-css';s.textContent=`body{background:#f0f2f5!important;color:#050505!important}header{background:#fff!important;border-color:#dddfe2!important}aside{background:#fff!important;color:#050505!important;border-right:1px solid #dddfe2!important}aside .brand-mark{color:#1877f2!important}aside p,aside a{color:#050505!important}aside a:hover,aside a[class*="bg-[#f7c968]"]{background:#e7f3ff!important;color:#1877f2!important}main>div{max-width:1100px!important}.lift,article,.rounded-2xl{border-color:#dddfe2!important;background:#fff!important}.display,h1,h2,h3{color:#050505!important}.text-\[\#527075\],.text-\[\#789093\]{color:#65676b!important}.bg-\[\#2f817d\],button.bg-\[\#2f817d\]{background:#1877f2!important}.text-\[\#2f817d\]{color:#1877f2!important}.bg-\[\#1d4348\]{background:#1877f2!important}.rounded-xl{border-color:#dddfe2}.fb-card{background:#fff;border:1px solid #dddfe2;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.08)}.fb-blue{color:#1877f2}.fb-btn{border:0;border-radius:6px;background:#e7f3ff;color:#1877f2;font-weight:700;padding:9px 14px;cursor:pointer}.fb-btn:hover{background:#d8ebff}.fb-dept{padding:18px}.fb-dept h3{margin:0;font-size:17px}.fb-dept p{margin:5px 0;color:#65676b;font-size:13px}.fb-tools{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.fb-tool{border:1px solid #dddfe2;background:#f7f8fa;border-radius:7px;padding:8px 10px;font-size:12px;font-weight:700;color:#1877f2;cursor:pointer}.fb-tool:hover{background:#e7f3ff}.fb-panel{margin-top:12px;padding:14px;border-top:1px solid #dddfe2;background:#f7f8fa}.fb-panel form{display:grid;gap:8px}.fb-panel input{border:1px solid #ccd0d5;border-radius:6px;padding:9px;background:#fff}.fb-result{font-weight:800;color:#1877f2}.fb-hero{padding:22px;border-radius:8px;background:#fff;border:1px solid #dddfe2;margin-bottom:16px}.fb-hero h2{margin:0;font-size:25px}.fb-hero p{color:#65676b;margin:7px 0 0}.fb-postbox{padding:12px;margin-bottom:12px}.fb-postbox button{width:100%;border:0;border-radius:20px;background:#f0f2f5;padding:12px;text-align:left;color:#65676b;cursor:pointer}`;document.head.appendChild(s)}
+function circles(){if(location.pathname!='/circles'||document.getElementById('olanet-fb-departments'))return;const main=document.querySelector('main');if(!main)return;main.innerHTML=`<div id="olanet-fb-departments"><div class="fb-hero"><h2>Departments</h2><p>Join a department, learn with people in the same field, and use the tools built for that department.</p></div><div class="fb-card" style="padding:6px"><div id="fb-dept-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"></div></div></div>`;const grid=document.getElementById('fb-dept-grid');departments.forEach(d=>{const el=document.createElement('section');el.className='fb-dept';el.innerHTML=`<div style="font-size:30px">${d[2]}</div><h3>${esc(d[1])}</h3><p>Community, discussions and practical tools for ${esc(d[1])}.</p><button class="fb-btn" data-join="${d[0]}">Join department</button><div class="fb-tools">${d[3].map(x=>`<button class="fb-tool" data-calc="${esc(x)}">🧮 ${esc(x)}</button>`).join('')}</div><div class="fb-panel" hidden></div>`;el.querySelector('[data-join]').onclick=async e=>{e.currentTarget.textContent='Joined';e.currentTarget.disabled=true;try{await fetch('/api/circles/'+d[0]+'/join',{method:'POST',credentials:'include'})}catch{}};el.querySelectorAll('[data-calc]').forEach(b=>b.onclick=()=>showCalc(el,b.dataset.calc));grid.appendChild(el)});
+}
+function showCalc(card,name){const panel=card.querySelector('.fb-panel');panel.hidden=false;panel.innerHTML=`<strong>${esc(name)}</strong><form></form><div class="fb-result"></div>`;const form=panel.querySelector('form');(calc[name]||[]).forEach(([label,key])=>{const i=document.createElement('input');i.type='number';i.step='any';i.required=true;i.placeholder=label;i.name=key;form.appendChild(i)});const b=document.createElement('button');b.type='submit';b.className='fb-btn';b.textContent='Calculate';form.appendChild(b);form.onsubmit=e=>{e.preventDefault();const v={};new FormData(form).forEach((x,k)=>v[k]=Number(x));try{const r=formula(name,v);if(!r||!Number.isFinite(Number(r[1]))&&typeof r[1]!=='string')throw 0;panel.querySelector('.fb-result').textContent=r[0]+': '+(typeof r[1]==='number'?r[1].toFixed(2):r[1])+(r[2]?' '+r[2]:'')}catch{panel.querySelector('.fb-result').textContent='Enter valid values.'}}}
+function home(){if(location.pathname!='/')return;const main=document.querySelector('main');if(!main||document.getElementById('olanet-fb-home'))return;const wrap=document.createElement('div');wrap.id='olanet-fb-home';wrap.innerHTML='<div class="fb-hero"><h2>OLANET</h2><p>Connect, share what you are learning, find people in your field, and build together.</p></div>';const first=main.querySelector('.page-enter');if(first){first.parentNode.insertBefore(wrap,first);first.classList.add('fb-card');}}
+function run(){css();circles();home()};new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true});run();
+})();
