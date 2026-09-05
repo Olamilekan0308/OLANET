@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "npm --prefix skillhub install --no-package-lock && npm --prefix skillhub run build",
     "typecheck": "npm --prefix skillhub install --no-package-lock && npm --prefix skillhub run typecheck"
