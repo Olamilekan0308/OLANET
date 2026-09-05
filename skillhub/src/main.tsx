@@ -4,6 +4,7 @@ import DepartmentHub from '@/components/department-hub';
 import PeopleHub from '@/components/people-hub';
 import SettingsHub from '@/components/settings-hub';
 import ProfileHub from '@/components/profile-hub';
+import MessagesHub from '@/components/messages-hub';
 import { ErrorBoundary } from '@/components/error-boundary';
 import './index.css';
 
@@ -13,6 +14,7 @@ function RootApp() {
   if (path === '/people' || path === '/friends' || path === '/search') return <PeopleHub />;
   if (path === '/settings' || path === '/settings/account') return <SettingsHub />;
   if (path === '/profile') return <ProfileHub />;
+  if (path === '/messages') return <MessagesHub />;
   return <App />;
 }
 
