@@ -2,15 +2,15 @@ import { createRoot } from 'react-dom/client';
 
 import App from './App';
 import DepartmentHub from '@/components/department-hub';
+import PeopleHub from '@/components/people-hub';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 import './index.css';
 
 function RootApp() {
-  // The department hub is routed here so the live Circle APIs replace the old demo Circle screen
-  // without disturbing the rest of the production shell while the remaining social screens are wired.
   const path = window.location.pathname;
   if (path === '/circles' || /^\/circles\/\d+$/.test(path)) return <DepartmentHub />;
+  if (path === '/people' || path === '/friends') return <PeopleHub />;
   return <App />;
 }
 
