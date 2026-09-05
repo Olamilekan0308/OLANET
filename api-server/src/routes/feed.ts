@@ -36,9 +36,12 @@ router.get("/feed", async (req,res):Promise<void=>{
 router.post("/feed", async(req,res):Promise<void=>{
  const a=await auth(req,res);if(!a)return;
  const content=typeof req.body?.content==="string"?req.body.content.trim():"";
- if(!content){res.status(400).json({error:"Post content is required."});return;}
+ const imageUrl=typeof req.body?.image_url==="string"?req.body.image_url.trim():"";
+ if(!content&&!imageUrl){res.status(400).json({error:"Post content or an image is required."});return;}
  if(content.length>5000){res.status(400).json({error:"Post is too long."});return;}
- const payload={user_id:a.user.id,content,circle_id:typeof req.body?.circle_id==="number"?req.body.circle_id:null};
+ if(imageUrl && imageUrl.length>2200000){res.status(413).json({error:"Image is too large. Please choose a smaller image."});return;}
+ if(imageUrl && !/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(imageUrl)){res.status(400).json({error:"Unsupported image format."});return;}
+ const payload={user_id:a.user.id,content,circle_id:typeof req.body?.circle_id==="number"?req.body.circle_id:null,image_url:imageUrl||null};
  const created=await supabase("/rest/v1/posts?select=*",a.token,{method:"POST",body:JSON.stringify(payload),headers:{Prefer:"return=representation"}});
  const data=await readJson<unknown>(created);if(!created.ok){res.status(created.status).json(data??{error:"Could not create post."});return;}
  res.status(201).json(Array.isArray(data)?data[0]:data);
