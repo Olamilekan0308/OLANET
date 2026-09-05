@@ -42,7 +42,7 @@
         if(action==='friend'){
           const r=await fetch('/api/friends/'+encodeURIComponent(userId),{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Could not send friend request');personAction.textContent='Requested';personAction.style.opacity='.65';toast('Friend request sent');
         } else {
-          const r=await fetch('/api/messages/conversations',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_ids:[userId]})});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Could not start conversation');window.location.href='/messages';
+          const r=await fetch('/api/conversations',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_ids:[userId]})});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Could not start conversation');window.location.href='/messages';
         }
       }catch(e){personAction.removeAttribute('disabled');toast(e instanceof Error?e.message:'Action failed');} return;
     }
