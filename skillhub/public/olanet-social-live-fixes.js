@@ -1,64 +1,10 @@
 (() => {
   const esc = (value) => String(value ?? '').replace(/[&<>\"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
-
-  const findPostId = (url) => {
-    const m = String(url || '').match(/\/api\/posts\/([^/]+)\/(comments|share)(?:\?|$)/);
-    return m ? decodeURIComponent(m[1]) : null;
-  };
-
+  const findPostId = (url) => { const m = String(url || '').match(/\/api\/posts\/([^/]+)\/(comments|share)(?:\?|$)/); return m ? decodeURIComponent(m[1]) : null; };
   const findCard = (postId) => document.querySelector(`[data-testid="card-post-${CSS.escape(postId)}"]`) || document.querySelector(`[data-testid^="card-post-"] [data-post-id="${CSS.escape(postId)}"]`)?.closest('[data-testid^="card-post-"]');
-
-  const addLocalComment = (postId, body) => {
-    const input = document.querySelector(`[data-testid="input-comment-${CSS.escape(postId)}"]`);
-    if (!input) return;
-    const card = findCard(postId);
-    if (!card) return;
-    let list = card.querySelector('[data-olanet-live-comments]');
-    if (!list) {
-      list = document.createElement('div');
-      list.setAttribute('data-olanet-live-comments', '1');
-      list.style.cssText = 'display:grid;gap:7px;margin:8px 0 10px;';
-      input.closest('form')?.before(list) || input.parentElement?.before(list);
-    }
-    const item = document.createElement('div');
-    item.style.cssText = 'padding:8px 10px;border-radius:12px;background:var(--olanet-hover,#f0f2f5);font:600 13px system-ui,sans-serif;color:var(--olanet-text,#333);';
-    item.innerHTML = `<strong style="font-weight:800">You</strong><div style="margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere">${esc(body)}</div>`;
-    list.appendChild(item);
-    input.value = '';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  };
-
-  const incrementShare = (postId) => {
-    const card = findCard(postId);
-    if (!card) return;
-    const button = card.querySelector(`[data-testid="button-share-post-${CSS.escape(postId)}"]`);
-    if (!button || button.dataset.olanetShareUpdated === '1') return;
-    button.dataset.olanetShareUpdated = '1';
-    const text = button.textContent || '';
-    const match = text.match(/(\d+)/);
-    if (match) button.textContent = text.replace(match[1], String(Number(match[1]) + 1));
-    else button.textContent = `${text.trim()} 1`.trim();
-  };
-
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (...args) => {
-    const response = await originalFetch(...args);
-    try {
-      const request = args[0];
-      const url = typeof request === 'string' ? request : request?.url;
-      const method = String(args[1]?.method || request?.method || 'GET').toUpperCase();
-      if (response.ok && method === 'POST') {
-        const postId = findPostId(url);
-        if (postId && String(url).includes('/comments')) {
-          const payload = args[1]?.body;
-          let body = null;
-          try { body = payload ? JSON.parse(payload)?.body : null; } catch (_) {}
-          if (body) addLocalComment(postId, body);
-        } else if (postId && String(url).includes('/share')) {
-          incrementShare(postId);
-        }
-      }
-    } catch (_) {}
-    return response;
-  };
+  const toast = (message) => { let el = document.getElementById('olanet-action-toast'); if (!el) { el = document.createElement('div'); el.id = 'olanet-action-toast'; Object.assign(el.style,{position:'fixed',left:'50%',bottom:'80px',transform:'translateX(-50%)',zIndex:'100000',background:'#1d4348',color:'#fff',padding:'10px 14px',borderRadius:'12px',font:'700 13px system-ui,sans-serif'}); document.body.appendChild(el); } el.textContent=message; el.style.opacity='1'; clearTimeout(el._timer); el._timer=setTimeout(()=>{el.style.opacity='0'},2200); };
+  const addLocalComment = (postId, body) => { const input=document.querySelector(`[data-testid="input-comment-${CSS.escape(postId)}"]`); const card=findCard(postId); if(!input||!card)return; let list=card.querySelector('[data-olanet-live-comments]'); if(!list){list=document.createElement('div');list.setAttribute('data-olanet-live-comments','1');list.style.cssText='display:grid;gap:7px;margin:8px 0 10px';input.parentElement?.before(list);} const item=document.createElement('div');item.style.cssText='padding:8px 10px;border-radius:12px;background:var(--olanet-hover,#f0f2f5);font:600 13px system-ui;color:var(--olanet-text,#333)';item.innerHTML=`<strong>You</strong><div style="margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere">${esc(body)}</div>`;list.appendChild(item);input.value='';input.dispatchEvent(new Event('input',{bubbles:true})); };
+  const incrementShare = (postId) => { const card=findCard(postId); if(!card)return; const button=card.querySelector(`[data-testid="button-share-post-${CSS.escape(postId)}"]`); if(!button||button.dataset.olanetShareUpdated==='1')return; button.dataset.olanetShareUpdated='1'; const text=button.textContent||''; const match=text.match(/(\d+)/); if(match)button.textContent=text.replace(match[1],String(Number(match[1])+1)); else button.textContent='Shared'; };
+  const originalFetch=window.fetch.bind(window); window.fetch=async(...args)=>{ const response=await originalFetch(...args); try{const request=args[0];const url=typeof request==='string'?request:request?.url;const method=String(args[1]?.method||request?.method||'GET').toUpperCase();if(response.ok&&method==='POST'){const postId=findPostId(url);if(postId&&String(url).includes('/comments')){let body=null;try{body=args[1]?.body?JSON.parse(args[1].body)?.body:null}catch(_){}if(body)addLocalComment(postId,body);}else if(postId&&String(url).includes('/share'))incrementShare(postId);}}catch(_){}return response; };
+  document.addEventListener('click', async (event) => { const target=event.target instanceof Element?event.target:null; if(!target)return; const share=target.closest('[data-testid^="button-share-post-"]'); if(!share)return; if(share.dataset.olanetShareBusy==='1')return; const card=share.closest('[data-testid^="card-post-"]'); const match=share.getAttribute('data-testid')?.match(/button-share-post-(.+)$/); const postId=match?.[1]; if(!postId)return; share.dataset.olanetShareBusy='1'; try{const r=await fetch('/api/posts/'+encodeURIComponent(postId)+'/share',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}});if(!r.ok){const data=await r.json().catch(()=>null);throw new Error(data?.error||'Unable to record share');} const text=card?.querySelector('p')?.textContent||'OLANET post'; if(navigator.share){try{await navigator.share({title:'OLANET',text})}catch(_){} }else if(navigator.clipboard){await navigator.clipboard.writeText(text);toast('Post shared and copied');} }catch(e){toast(e instanceof Error?e.message:'Unable to share post');}finally{delete share.dataset.olanetShareBusy;} }, true);
 })();
