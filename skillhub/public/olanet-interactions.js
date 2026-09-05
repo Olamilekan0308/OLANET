@@ -5,7 +5,6 @@
     el.textContent=message; el.style.opacity='1'; clearTimeout(el._timer); el._timer=setTimeout(()=>{el.style.opacity='0'},2200);
   };
   const key=(prefix,id)=>`olanet:${prefix}:${id}`; const saved=(prefix,id)=>localStorage.getItem(key(prefix,id))==='1'; const toggleSaved=(prefix,id)=>{const next=!saved(prefix,id);localStorage.setItem(key(prefix,id),next?'1':'0');return next;}; const closestTest=(target,prefix)=>target.closest(`[data-testid^="${prefix}"]`);
-  const esc=(value)=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   const mountMobileDock=()=>{
     document.querySelectorAll('nav.fixed.bottom-0').forEach((n)=>{n.style.display='none'});
@@ -43,7 +42,7 @@
         if(action==='friend'){
           const r=await fetch('/api/friends/'+encodeURIComponent(userId),{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Could not send friend request');personAction.textContent='Requested';personAction.style.opacity='.65';toast('Friend request sent');
         } else {
-          const r=await fetch('/api/conversations',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_ids:[userId]})});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Could not start conversation');window.location.href='/messages';
+          const r=await fetch('/api/messages/conversations',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_ids:[userId]})});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||'Could not start conversation');window.location.href='/messages';
         }
       }catch(e){personAction.removeAttribute('disabled');toast(e instanceof Error?e.message:'Action failed');} return;
     }
