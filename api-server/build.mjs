@@ -28,7 +28,7 @@ const compatibilityPlugin = {
         }
       `,
     }));
-    build.onLoad({ filter: /\\.tsx?$/ }, async (args) => {
+    build.onLoad({ filter: /\.tsx?$/ }, async (args) => {
       const source = await readFile(args.path, "utf8");
       const fixed = source.replace(/Promise<void=>/g, "Promise<void> =>");
       return { contents: fixed, loader: args.path.endsWith(".tsx") ? "tsx" : "ts" };
