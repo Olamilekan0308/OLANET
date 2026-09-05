@@ -12,6 +12,7 @@ import settingsRouter from "./settings";
 import friendsRouter from "./friends";
 import profileRouter from "./profile";
 import notificationsRouter from "./notifications";
+import groupMessageSecurityRouter from "./group-message-security";
 
 const router: IRouter = Router();
 router.use(healthRouter);
@@ -21,6 +22,7 @@ router.use(supportAIRouter);
 router.use(circlesRouter);
 router.use(circlePostsRouter);
 router.use(feedRouter);
+router.use("/groups/:id/messages", groupMessageSecurityRouter);
 router.use(socialRouter);
 router.use("/messages", messagesRouter);
 router.use(settingsRouter);
