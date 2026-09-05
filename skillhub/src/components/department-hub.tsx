@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Calculator, Check, ChevronRight, Users, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calculator, Check, ChevronRight, Users, Zap, type LucideIcon } from 'lucide-react';
 
 type Circle = { id: number; name: string; description?: string | null; memberCount: number; isMember: boolean };
 type CalculatorItem = { id: string; name: string; description: string };
@@ -43,4 +43,4 @@ export default function DepartmentHub() {
 }
 function Loading(){return <div className="rounded-2xl border border-[#dfd2c0] bg-[#fffaf1] p-12 text-center text-sm text-[#789093]">Loading departments…</div>}
 function Notice({text}:{text:string}){return <div className="mb-4 rounded-xl border border-[#e8b4a8] bg-[#f9e6e1] px-4 py-3 text-sm font-bold text-[#9b4337]">{text}</div>}
-function Stat({icon:Icon,value,label}:{icon:typeof Users;value:string;label:string}){return <div className="flex items-center gap-2"><Icon size={16} className="text-[#2f817d]"/><div><p className="font-bold">{value}</p><p className="text-[10px] text-[#789093]">{label}</p></div></div>}
+function Stat({icon:Icon,value,label}:{icon:LucideIcon;value:string;label:string}){return <div className="flex items-center gap-2"><Icon size={16} className="text-[#2f817d]"/><div><p className="font-bold">{value}</p><p className="text-[10px] text-[#789093]">{label}</p></div></div>}
