@@ -9,9 +9,9 @@ import socialRouter from "./social";
 import messagesRouter from "./messages";
 import settingsRouter from "./settings";
 import friendsRouter from "./friends";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
-
 router.use(healthRouter);
 router.use(authRouter);
 router.use(olanetAIRouter);
@@ -22,5 +22,5 @@ router.use(socialRouter);
 router.use("/messages", messagesRouter);
 router.use(settingsRouter);
 router.use(friendsRouter);
-
+router.use(profileRouter);
 export default router;
