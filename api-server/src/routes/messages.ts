@@ -1,16 +1,79 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 import socialRouter from "./social";
 
 const router: IRouter = Router();
+const ACCESS_COOKIE = "skillhub_access_token";
+
+async function readJson<T>(response: { text(): Promise<string> }): Promise<T | null> {
+  const text = await response.text();
+  try { return text ? JSON.parse(text) as T : null; } catch { return null; }
+}
+
+async function supabase(path: string, token: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) {
+  const connectors = new ReplitConnectors();
+  return connectors.proxy("supabase", path, {
+    ...init,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(init.headers || {}) },
+  });
+}
 
 // The frontend uses /api/messages/* while the existing social router exposes
-// direct-message endpoints at /api/conversations/*. Keep both contracts valid
-// so the UI and older clients can coexist.
+// direct-message endpoints at /api/conversations/*. Keep both contracts valid.
 router.use((req: Request, _res: Response, next: NextFunction) => {
   if (req.method === "POST" && req.path === "/conversations" && typeof req.body?.user_id === "string" && !req.body?.user_ids) {
     req.body.user_ids = [req.body.user_id];
   }
   next();
+});
+
+// Return conversation rows with the other participant's public profile. The
+// Messenger UI needs this data to render the person's name and avatar.
+router.get("/conversations", async (req: Request, res: Response, next: NextFunction) => {
+  const token = req.signedCookies?.[ACCESS_COOKIE] as string | undefined;
+  if (!token) return next();
+  try {
+    const authResponse = await supabase("/auth/v1/user", token, { method: "GET" });
+    const user = await readJson<{ id?: string }>(authResponse);
+    if (!authResponse.ok || !user?.id) return next();
+
+    const membersResponse = await supabase(
+      `/rest/v1/direct_conversation_members?user_id=eq.${encodeURIComponent(user.id)}&select=conversation_id`,
+      token,
+      { method: "GET" },
+    );
+    const members = await readJson<Array<{ conversation_id: number }>>(membersResponse) ?? [];
+    const ids = members.map((row) => row.conversation_id).filter((id) => Number.isFinite(id));
+    if (!ids.length) return res.json([]);
+
+    const [conversationsResponse, participantsResponse] = await Promise.all([
+      supabase(`/rest/v1/direct_conversations?id=in.(${ids.join(",")})&select=*`, token, { method: "GET" }),
+      supabase(`/rest/v1/direct_conversation_members?conversation_id=in.(${ids.join(",")})&user_id=neq.${encodeURIComponent(user.id)}&select=conversation_id,user_id`, token, { method: "GET" }),
+    ]);
+    const conversations = await readJson<Array<Record<string, unknown>>>(conversationsResponse) ?? [];
+    const participants = await readJson<Array<{ conversation_id: number; user_id: string }>>(participantsResponse) ?? [];
+    const userIds = [...new Set(participants.map((row) => row.user_id))];
+    const profilesResponse = userIds.length
+      ? await supabase(`/rest/v1/profiles?id=in.(${userIds.map(encodeURIComponent).join(",")})&select=id,full_name,username,avatar_url,bio`, token, { method: "GET" })
+      : null;
+    const profiles = profilesResponse ? await readJson<Array<Record<string, unknown>>>(profilesResponse) ?? [] : [];
+    const profileById = new Map(profiles.map((profile) => [String(profile.id), profile]));
+    const participantByConversation = new Map<number, string>();
+    for (const participant of participants) participantByConversation.set(participant.conversation_id, participant.user_id);
+
+    const enriched = conversations.map((conversation) => {
+      const id = Number(conversation.id);
+      const otherId = participantByConversation.get(id);
+      return {
+        ...conversation,
+        conversation_id: id,
+        other_user: otherId ? profileById.get(otherId) ?? { id: otherId } : null,
+      };
+    });
+    return res.json(enriched);
+  } catch (error) {
+    return res.status(500).json({ error: error instanceof Error ? error.message : "Unable to load conversations" });
+  }
 });
 
 router.use(socialRouter);
