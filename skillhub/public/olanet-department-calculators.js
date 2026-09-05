@@ -1,31 +1,32 @@
 (() => {
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const tools = {
+    "Ohm's Law": {fields:[['voltage','Voltage (V)'],['resistance','Resistance (Ω)']], calc:v=>({label:'Current',value:v.voltage/v.resistance,unit:'A'})},
+    'Electrical Power': {fields:[['voltage','Voltage (V)'],['current','Current (A)']], calc:v=>({label:'Power',value:v.voltage*v.current,unit:'W'})},
+    'Voltage Drop': {fields:[['current','Current (A)'],['resistance','Resistance (Ω)']], calc:v=>({label:'Voltage drop',value:v.current*v.resistance,unit:'V'})},
+    'Lighting Load': {fields:[['fixtures','Number of fixtures'],['watts','Watts per fixture']], calc:v=>({label:'Lighting load',value:v.fixtures*v.watts,unit:'W'})},
+    'Energy Consumption': {fields:[['power','Power (W)'],['hours','Hours used']], calc:v=>({label:'Energy',value:v.power*v.hours/1000,unit:'kWh'})},
+    'Concrete Volume': {fields:[['length','Length (m)'],['width','Width (m)'],['depth','Depth (m)']], calc:v=>({label:'Concrete volume',value:v.length*v.width*v.depth,unit:'m³'})},
+    'Area Calculator': {fields:[['length','Length'],['width','Width']], calc:v=>({label:'Area',value:v.length*v.width,unit:'units²'})},
+    'Torque': {fields:[['force','Force (N)'],['distance','Distance (m)']], calc:v=>({label:'Torque',value:v.force*v.distance,unit:'N·m'})},
+    'Motor Power': {fields:[['torque','Torque (N·m)'],['rpm','RPM']], calc:v=>({label:'Power',value:v.torque*2*Math.PI*v.rpm/60,unit:'W'})},
+    'RPM Converter': {fields:[['rpm','RPM']], calc:v=>({label:'Angular speed',value:v.rpm*2*Math.PI/60,unit:'rad/s'})},
+    'Storage Converter': {fields:[['gb','Gigabytes (GB)']], calc:v=>({label:'Megabytes',value:v.gb*1024,unit:'MB'})},
+    'Board Feet': {fields:[['thickness','Thickness (in)'],['width','Width (in)'],['length','Length (ft)']], calc:v=>({label:'Board feet',value:v.thickness*v.width*v.length/12,unit:'board ft'})},
+    'Fabric Estimate': {fields:[['pieces','Number of pieces'],['yards','Yards per piece']], calc:v=>({label:'Fabric needed',value:v.pieces*v.yards,unit:'yards'})},
+    'Portion Calculator': {fields:[['people','People'],['portion','Portion per person']], calc:v=>({label:'Total portions',value:v.people*v.portion,unit:'portions'})},
+    'Food Cost': {fields:[['quantity','Quantity'],['unitCost','Cost per unit']], calc:v=>({label:'Food cost',value:v.quantity*v.unitCost,unit:'currency'})},
+    'Plant Spacing': {fields:[['length','Bed length (m)'],['spacing','Spacing (m)']], calc:v=>({label:'Plants along length',value:v.length/v.spacing,unit:'plants'})}
+  };
   const mount = async () => {
     if (location.pathname !== '/circles' || document.getElementById('olanet-live-calculators')) return;
     try {
-      const r = await fetch('/api/circles', { credentials: 'include' });
-      const data = await r.json().catch(() => null);
-      if (!r.ok || !Array.isArray(data?.circles)) return;
-      const host = document.createElement('section'); host.id = 'olanet-live-calculators';
-      host.style.cssText = 'margin:24px auto;max-width:1100px;padding:20px;border:1px solid #dfd2c0;border-radius:22px;background:#fffaf1;font-family:system-ui,sans-serif;box-shadow:0 8px 30px rgba(29,67,72,.06)';
-      host.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap"><div><div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#2f817d">Level 8 · live tools</div><h2 style="margin:6px 0 0;font-size:28px;line-height:1.1;color:#1d4348">Department calculators</h2><p style="margin:7px 0 0;font-size:13px;color:#789093">Choose a department and use its real calculator catalog.</p></div><span style="font-size:11px;font-weight:700;color:#789093">Connected to OLANET</span></div><div id="olanet-calc-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:18px"></div>`;
-      const main = document.querySelector('main'); if (!main) return; main.appendChild(host);
-      const grid = host.querySelector('#olanet-calc-grid');
-      data.circles.forEach(circle => {
-        const card = document.createElement('article'); card.style.cssText='border:1px solid #eadfce;border-radius:16px;padding:15px;background:#f8f2e8';
-        card.innerHTML=`<div style="font-weight:800;color:#1d4348">${esc(circle.name)}</div><div style="margin-top:4px;font-size:11px;color:#789093">${Number(circle.memberCount||0).toLocaleString()} members · ${circle.isMember?'Joined':'Not joined'}</div><button type="button" data-circle-id="${esc(circle.id)}" style="margin-top:12px;width:100%;border:0;border-radius:10px;padding:10px;background:#1d4348;color:#fffaf1;font-weight:800;cursor:pointer">View calculators</button>`;
-        card.querySelector('button').addEventListener('click', async () => {
-          const btn = card.querySelector('button'); btn.disabled=true; btn.textContent='Loading…';
-          try {
-            const cr = await fetch(`/api/circles/${encodeURIComponent(circle.id)}/calculators`, {credentials:'include'}); const cd=await cr.json().catch(()=>null); if(!cr.ok) throw new Error(cd?.error||'Unable to load calculators');
-            const list=Array.isArray(cd?.calculators)?cd.calculators:[];
-            card.insertAdjacentHTML('beforeend', `<div style="margin-top:12px;display:grid;gap:7px">${list.length ? list.map(x=>`<div style="padding:10px;border-radius:10px;background:#fffaf1;border:1px solid #dfd2c0"><div style="font-size:12px;font-weight:800;color:#1d4348">${esc(x.name)}</div><div style="margin-top:3px;font-size:11px;color:#789093">${esc(x.description)}</div></div>`).join('') : '<div style="font-size:11px;color:#789093">No calculator catalog yet for this department.</div>'}</div>`);
-            btn.remove();
-          } catch(e) { btn.disabled=false; btn.textContent='Retry'; }
-        });
-        grid.appendChild(card);
-      });
+      const r=await fetch('/api/circles',{credentials:'include'}), data=await r.json().catch(()=>null); if(!r.ok||!Array.isArray(data?.circles)) return;
+      const host=document.createElement('section'); host.id='olanet-live-calculators'; host.style.cssText='margin:24px auto;max-width:1100px;padding:20px;border:1px solid #dfd2c0;border-radius:22px;background:#fffaf1;font-family:system-ui,sans-serif;box-shadow:0 8px 30px rgba(29,67,72,.06)';
+      host.innerHTML='<div><div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#2f817d">Level 8 · live tools</div><h2 style="margin:6px 0;font-size:28px;color:#1d4348">Department calculators</h2><p style="margin:0;font-size:13px;color:#789093">Live calculators connected to each department.</p></div><div id="olanet-calc-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:18px"></div>';
+      const main=document.querySelector('main'); if(!main)return; main.appendChild(host); const grid=host.querySelector('#olanet-calc-grid');
+      data.circles.forEach(circle=>{const card=document.createElement('article'); card.style.cssText='border:1px solid #eadfce;border-radius:16px;padding:15px;background:#f8f2e8'; card.innerHTML=`<div style="font-weight:800;color:#1d4348">${esc(circle.name)}</div><div style="margin-top:4px;font-size:11px;color:#789093">${Number(circle.memberCount||0).toLocaleString()} members · ${circle.isMember?'Joined':'Not joined'}</div><button type="button" style="margin-top:12px;width:100%;border:0;border-radius:10px;padding:10px;background:#1d4348;color:#fffaf1;font-weight:800;cursor:pointer">View calculators</button>`;
+        card.querySelector('button').onclick=async()=>{const btn=card.querySelector('button');btn.disabled=true;btn.textContent='Loading…';try{const cr=await fetch(`/api/circles/${encodeURIComponent(circle.id)}/calculators`,{credentials:'include'}),cd=await cr.json().catch(()=>null);if(!cr.ok)throw Error(cd?.error||'Unable to load calculators');const list=Array.isArray(cd?.calculators)?cd.calculators:[];btn.remove();const panel=document.createElement('div');panel.style.cssText='margin-top:12px;display:grid;gap:8px';list.forEach(x=>{const t=document.createElement('div');t.style.cssText='padding:11px;border-radius:11px;background:#fffaf1;border:1px solid #dfd2c0';t.innerHTML=`<div style="font-size:12px;font-weight:800;color:#1d4348">${esc(x.name)}</div><div style="margin-top:3px;font-size:11px;color:#789093">${esc(x.description)}</div>`;const spec=tools[x.name];if(spec){const form=document.createElement('form');form.style.cssText='margin-top:9px;display:grid;gap:7px';spec.fields.forEach(([key,label])=>{const input=document.createElement('input');input.name=key;input.type='number';input.step='any';input.min='0';input.placeholder=label;input.required=true;input.style.cssText='width:100%;box-sizing:border-box;padding:8px;border:1px solid #dfd2c0;border-radius:8px;background:white';form.appendChild(input)});const b=document.createElement('button');b.type='submit';b.textContent='Calculate';b.style.cssText='border:0;border-radius:8px;padding:8px;background:#2f817d;color:white;font-weight:800';const out=document.createElement('div');out.style.cssText='font-size:12px;font-weight:800;color:#1d4348';form.append(b,out);form.onsubmit=e=>{e.preventDefault();const vals=Object.fromEntries(new FormData(form).entries());const v={};for(const k in vals)v[k]=Number(vals[k]);try{const res=spec.calc(v);if(!Number.isFinite(res.value))throw Error();out.textContent=`${res.label}: ${res.value.toFixed(2)} ${res.unit}`}catch{out.textContent='Enter valid values to calculate.'}};t.appendChild(form)}panel.appendChild(t)});card.appendChild(panel)}catch{btn.disabled=false;btn.textContent='Retry'}};grid.appendChild(card)});
     } catch (_) {}
-  };
-  const observer = new MutationObserver(() => mount()); observer.observe(document.documentElement,{childList:true,subtree:true}); mount();
+  }; const observer=new MutationObserver(mount);observer.observe(document.documentElement,{childList:true,subtree:true});mount();
 })();
