@@ -11,6 +11,7 @@ import messagesRouter from "./messages";
 import settingsRouter from "./settings";
 import friendsRouter from "./friends";
 import profileRouter from "./profile";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 router.use(healthRouter);
@@ -25,4 +26,5 @@ router.use("/messages", messagesRouter);
 router.use(settingsRouter);
 router.use(friendsRouter);
 router.use(profileRouter);
+router.use(notificationsRouter);
 export default router;
