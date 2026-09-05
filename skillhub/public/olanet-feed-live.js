@@ -4,7 +4,7 @@
     if (!el) { el = document.createElement('div'); el.id = 'olanet-feed-toast'; Object.assign(el.style, { position: 'fixed', left: '50%', bottom: '88px', zIndex: '100001', background: '#1d4348', color: '#fffaf1', padding: '10px 14px', borderRadius: '12px', font: '700 13px system-ui,sans-serif', boxShadow: '0 10px 30px rgba(0,0,0,.2)' }); document.body.appendChild(el); }
     el.textContent = message; el.style.opacity = '1'; clearTimeout(el._timer); el._timer = setTimeout(() => { el.style.opacity = '0'; }, 2200);
   };
-  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const esc = (v) => String(v ?? '').replace(/[&<>\"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[c]));
   const cards = () => [...document.querySelectorAll('[data-testid^="card-post-"]')].filter(x => !x.closest('[data-testid^="card-post-301"]'));
   const applyPost = (card, post) => {
     card.setAttribute('data-testid', `card-post-${post.id}`);
@@ -13,6 +13,12 @@
     const paragraphs = [...card.querySelectorAll('p')];
     const body = paragraphs.find(p => p.className.includes('text-[15px]')) || paragraphs.find(p => p !== author);
     if (body && post.content) body.textContent = post.content;
+    const existingMedia = card.querySelector('[data-olanet-post-media]');
+    if (post.media_url) {
+      const media = existingMedia || document.createElement('img');
+      media.setAttribute('data-olanet-post-media', '1'); media.src = post.media_url; media.alt = 'Post image'; media.style.cssText = 'display:block;width:100%;max-height:420px;object-fit:cover;border-radius:14px;margin-top:12px';
+      if (!existingMedia) (body?.parentElement || card).appendChild(media);
+    } else if (existingMedia) existingMedia.remove();
     const stats = card.querySelectorAll('.border-b');
     const stat = stats[0];
     if (stat) { const spans = stat.querySelectorAll('span'); if (spans[0]) spans[0].textContent = `${post.likes ?? 0} people found this useful`; if (spans[1]) spans[1].textContent = `${post.comments ?? 0} comments`; }
@@ -32,6 +38,23 @@
   const observe = new MutationObserver(() => { if (document.querySelector('[data-testid^="card-post-"]')) { void load(); observe.disconnect(); } });
   observe.observe(document.documentElement, { childList: true, subtree: true });
   setTimeout(() => void load(), 500);
+
+  document.addEventListener('change', (event) => {
+    const input = event.target instanceof HTMLInputElement ? event.target : null;
+    if (!input || input.type !== 'file' || !input.files?.[0]) return;
+    const file = input.files[0];
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) { toast('Choose a JPG, PNG or WebP image.'); input.value = ''; return; }
+    if (file.size > 1600000) { toast('Image is too large. Please choose one under 1.6 MB.'); input.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const modal = input.closest('.sheet-card'); if (!modal || typeof reader.result !== 'string') return;
+      modal.dataset.olanetImage = reader.result;
+      let preview = modal.querySelector('[data-olanet-image-preview]');
+      if (!preview) { preview = document.createElement('img'); preview.setAttribute('data-olanet-image-preview','1'); preview.style.cssText='display:block;width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin-top:10px'; input.parentElement?.after(preview); }
+      preview.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }, true);
 
   document.addEventListener('click', async (event) => {
     const target = event.target instanceof Element ? event.target : null; if (!target) return;
@@ -54,11 +77,11 @@
 
     const publish = target.closest('[data-testid="button-publish-note"]');
     if (publish) {
-      const modal = publish.closest('.sheet-card'); const textarea = modal?.querySelector('[data-testid="textarea-create-post"]'); const content = textarea?.value?.trim();
-      if (!content || publish.dataset.liveBusy === '1') return;
+      const modal = publish.closest('.sheet-card'); const textarea = modal?.querySelector('[data-testid="textarea-create-post"]'); const content = textarea?.value?.trim(); const media_url = modal?.dataset.olanetImage || '';
+      if ((!content && !media_url) || publish.dataset.liveBusy === '1') return;
       event.preventDefault(); event.stopImmediatePropagation(); publish.dataset.liveBusy = '1'; publish.disabled = true;
       try {
-        const response = await fetch('/api/feed', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+        const response = await fetch('/api/feed', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, media_url }) });
         const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.error || 'Unable to publish post');
         toast('Post published'); window.location.reload();
       } catch (error) { publish.disabled = false; publish.dataset.liveBusy = '0'; toast(error instanceof Error ? error.message : 'Unable to publish post'); }
